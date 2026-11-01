@@ -101,6 +101,25 @@
     demoTabs[next].click();
   }));
 
+  document.addEventListener('keydown', event => {
+    if (event.key !== 'Escape') return;
+    const openItems = [...document.querySelectorAll('.demo-stage-panel:not([hidden]) details[open]')];
+    const openDetails = event.target.closest('details[open]') || openItems.at(-1);
+    if (!openDetails) return;
+    openDetails.open = false;
+    openDetails.querySelector('summary')?.focus();
+  });
+
+  document.querySelectorAll('[data-copy-text]').forEach(button => button.addEventListener('click', async () => {
+    const status = document.querySelector('[data-tech-copy-status]');
+    try {
+      await navigator.clipboard.writeText(button.dataset.copyText);
+      if (status) status.textContent = button.dataset.copiedLabel || 'Copied';
+    } catch {
+      if (status) status.textContent = button.dataset.copyErrorLabel || 'Copy unavailable';
+    }
+  }));
+
   document.querySelectorAll('[data-copy-url]').forEach(button => button.addEventListener('click', async () => {
     const status = button.parentElement.querySelector('[data-copy-status]') || document.querySelector('[data-copy-status]');
     try {

@@ -26,8 +26,7 @@ COPY = {
 "capabilities": ["WHAT LITE DOES", "From request to reviewable work.", "This recorded case demonstrates one request becoming one structured item.", "CAN DO", ["Structure a request as a Work Item", "Return a Preview to inspect", "Make scope, non-goals, criteria, and checks visible", "Present a copyable GitHub Issue Markdown draft"], "NOT CLAIMED", ["Live AI generation on this website", "Verified decomposition for every request type", "Automatic GitHub Issue creation", "Accepted full GitHub Apply or a stable release"]],
 "handoff": ["RECORDED MARKDOWN · 1 WORK ITEM", "Review the real draft.", "This excerpt comes from the recorded Issue Markdown. Review the full request, criteria, and verification notes in the Demo."],
 "demo_kicker": "RECORDED OUTPUT · CONCEPTUAL PREVIEW", "demo_hero": "One request.<br><em>One reviewable draft.</em>", "demo_intro": "This page presents the recorded result from one local DS Lite run. It does not call AI live, request Authority, apply changes, or create a GitHub Issue.",
-"metrics": [["PREVIEW ID", "preview-5e03cf0f4e7c4e978d1ff62b1405ebf8"], ["REVISION", "1"], ["LEVEL", "Conceptual"], ["WORK ITEMS", "1"], ["RELATIONSHIPS", "0"], ["GITHUB WRITES", "0"]],
-"tabs": ["01 · Intent", "02 · Preview", "03 · Markdown"], "tab_headings": ["Original request · translated", "The recorded Preview receipt", "Issue Markdown"], "request_badge": "ENGLISH TRANSLATION · ORIGINAL INPUT WAS CHINESE",
+"tabs": ["01 · Original request", "02 · Planned Work Item", "03 · Preview evidence", "04 · Issue Markdown"], "tab_headings": ["Original request · translated", "Planned Work Item", "Preview evidence", "Issue Markdown"], "request_badge": "ENGLISH TRANSLATION · ORIGINAL INPUT WAS CHINESE",
 "intent_para": "The original request recorded in the test is shown below.", "intent": "I want to build a personal portfolio website that supports desktop and mobile, with an introduction, project showcase, and contact information. The website should be mostly static, with no login, payments, or admin panel. It should provide basic keyboard accessibility and clear project links.", "receipt_para": "This is the recorded receipt identity and count summary. It represents a conceptual Preview; it is not repository-aware or eligible for Apply.", "markdown_para": "The Chinese Markdown file is the original sample. This English view is a presentation-layer translation, not a second Runtime receipt.", "raw_badge": "TRANSLATION · NOT THE ORIGINAL INPUT", "translated_badge": "TRANSLATION · NOT A SECOND RUNTIME RECEIPT", "copy": "Copy Markdown", "download": "Download Markdown", "copy_ready": "Ready to copy", "copied": "Copied to clipboard", "copy_error": "Copy unavailable. Use Download instead.", "markdown_loading": "Loading recorded Markdown…", "static_warning": "Static page · no live AI · no Authority or Apply · no GitHub Issue creation",
 "docs_kicker": "LOCAL SETUP · SOURCE CHECKOUT", "docs_hero": "Run the preview<br><em>in your own Host.</em>", "docs_intro": "The verified workflow runs from a local source checkout with a compatible MCP Host. Exact configuration screens differ by Host.",
 "doc_sections": [["01 / PREREQUISITES", "Before you start", "Python 3.10+, Git, the Delivery System source checkout, and an MCP Host that supports a local stdio server. The conceptual Preview flow does not need GitHub write credentials."], ["02 / INSTALL", "Create an isolated environment", "Clone the product repository and install its pinned runtime dependencies from its lock file."], ["03 / MCP SERVER", "Configure the local server", "Use the virtual-environment Python executable, launch the stdio server module, and set a dedicated local workspace root for Preview state. Host configuration syntax varies."], ["04 / SKILL", "Load the planning Skill", "Expose the planning Skill folder using the Host’s Skill mechanism. Hosts do not all discover repository Skills automatically."], ["05 / FIRST REQUEST", "Describe an outcome", "State the goal, scope, constraints, and non-goals. Review the returned Preview before copying any Issue draft."]],
@@ -55,8 +54,7 @@ COPY = {
 "capabilities": ["DS LITE 能做什么", "从需求到可审阅的工作项。", "这条真实记录展示一个需求如何整理成一个结构化工作项。", "可以做到", ["把需求整理成 Work Item", "返回可检查的 Preview", "明确范围、非目标、验收条件和验证方式", "提供可复制的 GitHub Issue Markdown 草稿"], "当前未验证", ["本站实时调用 AI 生成结果", "适用于所有需求类型的拆分", "自动创建 GitHub Issue", "DS Full GitHub Apply 已通过集成验收或正式发布"]],
 "handoff": ["历史 Markdown · 1 个工作项", "查看真实草稿。", "以下节选来自记录中的 Issue Markdown。打开 Demo 查看完整需求、验收条件和验证说明。"],
 "demo_kicker": "历史结果 · 概念预览", "demo_hero": "一个需求。<br><em>一份可审阅的草稿。</em>", "demo_intro": "此页面展示一次本地 DS Lite 运行的历史结果。它不会实时调用 AI、申请 Authority、执行 Apply，也不会创建 GitHub Issue。",
-"metrics": [["预览 ID", "preview-5e03cf0f4e7c4e978d1ff62b1405ebf8"], ["修订版本", "1"], ["级别", "Conceptual"], ["工作项", "1"], ["关系", "0"], ["GitHub 写入", "0"]],
-"tabs": ["01 · 需求", "02 · 预览", "03 · Markdown"], "tab_headings": ["原始需求", "记录中的预览回执", "Issue Markdown"], "request_badge": "原始中文请求 · Runtime 输入",
+"tabs": ["01 · 原始需求", "02 · 计划工作项", "03 · Preview 证据", "04 · Issue Markdown"], "tab_headings": ["原始需求", "计划工作项", "Preview 证据", "Issue Markdown"], "request_badge": "原始中文请求 · Runtime 输入",
 "intent_para": "以下为测试中记录的原始中文请求。", "intent": "我要开发一个个人作品集网站，支持桌面和移动端，包含个人介绍、项目展示和联系方式。网站以静态内容为主，不需要登录、支付或后台管理。要求基本键盘可访问性和清晰的项目链接。", "receipt_para": "这里展示准确的历史回执标识和计数。它是概念级预览，不针对仓库，也不具备 Apply 写入资格。", "markdown_para": "中文 Markdown 文件是原始样本。英文页面展示的是展示层翻译，不是另一份 Runtime 回执。", "raw_badge": "原始输入 · Runtime 中文记录", "translated_badge": "展示层英文翻译 · 非另一份 Runtime 回执", "copy": "复制 Markdown", "download": "下载 Markdown", "copy_ready": "可复制", "copied": "已复制到剪贴板", "copy_error": "无法复制，请使用下载。", "markdown_loading": "正在读取记录中的 Markdown…", "static_warning": "静态页面 · 不调用实时 AI · 不申请 Authority 或执行 Apply · 不创建 GitHub Issue",
 "docs_kicker": "本地配置 · 源码检出", "docs_hero": "在你自己的 Host 中<br><em>运行本地预览。</em>", "docs_intro": "已验证的流程从本地源码检出开始，并使用兼容的 MCP Host。不同 Host 的配置界面会有所不同。",
 "doc_sections": [["01 / 前置条件", "开始之前", "需要 Python 3.10+、Git、Delivery System 源码，以及支持本地 stdio 服务的 MCP Host。概念预览流程不需要 GitHub 写入凭据。"], ["02 / 安装", "创建隔离环境", "克隆产品源码仓库，并根据仓库锁定文件安装运行时依赖。"], ["03 / MCP 服务", "配置本地服务", "使用虚拟环境中的 Python 启动 stdio 服务模块，并为预览状态设置专用本地工作区。各 Host 的配置格式不同。"], ["04 / Skill", "加载规划 Skill", "通过 Host 自身的 Skill 机制加载规划 Skill 文件夹。不同 Host 不一定会自动发现仓库中的 Skill。"], ["05 / 第一个需求", "描述目标结果", "写清目标、范围、约束和非目标。检查返回的预览后，再决定是否复制 Issue 草稿。"]],
@@ -98,7 +96,10 @@ def footer(lang, prefix, t, page):
 def recorded_issue(lang):
     filename = "sample-issue.en.md" if lang == "en" else "sample-issue.md"
     lines = (ROOT / "assets" / filename).read_text(encoding="utf-8").splitlines()
-    title = next(line[2:] for line in lines if line.startswith("# "))
+    titles = [line[2:] for line in lines if line.startswith("# ")]
+    if len(titles) != 1:
+        raise ValueError(f"Expected one recorded Work Item in {filename}, found {len(titles)}")
+    title = titles[0]
     sections = {}
     current = None
     for line in lines:
@@ -112,12 +113,22 @@ def recorded_issue(lang):
         raise ValueError(f"Recorded Work Item sections are incomplete in {filename}")
     criteria = sections["Acceptance Criteria"]
     snippet = "# " + title + "\n\n## Acceptance Criteria\n\n" + "\n".join(f"- {item}" for item in criteria)
-    return title, sections, snippet
+    outcome_lines = []
+    in_outcome = False
+    for line in lines:
+        if line.startswith("## "):
+            in_outcome = line[3:].strip() == "Background / Outcome"
+        elif in_outcome and line.strip():
+            outcome_lines.append(line.strip())
+    if not outcome_lines:
+        raise ValueError(f"Recorded Work Item outcome is missing in {filename}")
+    outcome = " ".join(outcome_lines)
+    return title, sections, snippet, outcome
 
 
 def home_page(lang, prefix, t):
     names, copies = t["step_names"], t["step_copy"]
-    work_item_title, issue, markdown_excerpt = recorded_issue(lang)
+    work_item_title, issue, markdown_excerpt, _ = recorded_issue(lang)
     excerpt = esc(markdown_excerpt)
     demo_href = prefix + ("zh/" if lang == "zh" else "") + "demo/"
     buttons = []
@@ -156,14 +167,81 @@ def home_page(lang, prefix, t):
 def demo_page(lang, prefix, t):
     mdfile = "sample-issue.en.md" if lang == "en" else "sample-issue.md"
     mdurl = prefix + "assets/" + mdfile
-    metrics = "".join(f'<div class="metric"><span>{esc(k)}</span><strong>{esc(v)}</strong></div>' for k, v in t["metrics"])
+    work_item_title, issue, markdown_excerpt, outcome = recorded_issue(lang)
+    if lang == "en":
+        other_title, other_sections, _, _ = recorded_issue("zh")
+    else:
+        other_title, other_sections, _, _ = recorded_issue("en")
+    if work_item_title == other_title or any(len(issue[key]) != len(other_sections[key]) for key in ("Scope", "Non-goals", "Acceptance Criteria", "Verification")):
+        raise ValueError("Recorded bilingual Issue samples do not align")
+    labels = {
+        "en": {"Scope": "Scope", "Non-goals": "Non-goals", "Acceptance Criteria": "Acceptance Criteria", "Verification": "Verification"},
+        "zh": {"Scope": "范围", "Non-goals": "非目标", "Acceptance Criteria": "验收条件", "Verification": "验证说明"},
+    }[lang]
+    summary_one = "One planned GitHub Issue draft" if lang == "en" else "一份计划中的 GitHub Issue 草稿"
+    summary_counts = [
+        (len(issue["Scope"]), labels["Scope"]),
+        (len(issue["Acceptance Criteria"]), labels["Acceptance Criteria"]),
+        (len(issue["Verification"]), labels["Verification"]),
+        (len(issue["Non-goals"]), labels["Non-goals"]),
+    ]
+    summary = f'<div class="outcome-summary"><div class="outcome-lead"><span class="file-chip">01</span><div><strong>{summary_one}</strong><span>{esc(work_item_title)}</span><small>{"Planned only · no GitHub Issue exists from this Preview" if lang == "en" else "仅为规划结果 · 此 Preview 未创建 GitHub Issue"}</small></div></div><div class="outcome-counts">' + "".join(f'<div><strong>{count}</strong><span>{esc(label)}</span></div>' for count, label in summary_counts) + '</div></div>'
     tabs = "".join(f'<button id="demo-tab-{i+1}" class="demo-tab" type="button" role="tab" aria-controls="demo-panel-{i+1}" aria-selected="{"true" if i == 0 else "false"}" tabindex="{0 if i == 0 else -1}" data-demo-tab>{esc(label)}</button>' for i, label in enumerate(t["tabs"]))
     raw = "<section id=\"demo-panel-1\" class=\"demo-stage-panel\" role=\"tabpanel\" aria-labelledby=\"demo-tab-1\" data-demo-panel><div class=\"stage-heading\"><p class=\"eyebrow\">01 / " + esc(t["tab_headings"][0]) + "</p><h2>" + esc(t["step_names"][0]) + "</h2><p>" + esc(t["intent_para"]) + "</p><span class=\"translation-badge\">" + esc(t["request_badge"]) + "</span></div><blockquote>" + esc(t["intent"]) + "</blockquote><div class=\"boundary-note\">" + ("Faithful English translation of the original Chinese request." if lang == "en" else "此处为真实测试输入，按原文展示。") + "</div></section>"
-    receipt = "".join(f'<div><dt>{esc(k)}</dt><dd>{esc(v)}</dd></div>' for k, v in t["metrics"])
-    receipt += f'<div><dt>{"Stale" if lang == "en" else "是否过期"}</dt><dd>{"No" if lang == "en" else "否"}</dd></div><div><dt>{"Write eligible" if lang == "en" else "可写入"}</dt><dd>{"No" if lang == "en" else "否"}</dd></div>'
-    preview = f'<section id="demo-panel-2" class="demo-stage-panel" role="tabpanel" aria-labelledby="demo-tab-2" data-demo-panel hidden><div class="stage-heading"><p class="eyebrow">02 / {esc(t["tab_headings"][1])}</p><h2>Sealed Preview</h2><p>{esc(t["receipt_para"])}</p></div><dl class="receipt-grid">{receipt}</dl><div class="boundary-note">{"Conceptual only · no target repository or remote GitHub state was verified." if lang == "en" else "仅为概念预览 · 未指定目标仓库，也未核验远端 GitHub 状态。"}</div></section>'
-    md = f'<section id="demo-panel-3" class="demo-stage-panel markdown-stage" role="tabpanel" aria-labelledby="demo-tab-3" data-demo-panel hidden><div class="stage-heading"><p class="eyebrow">03 / {esc(t["tab_headings"][2])}</p><span class="translation-badge">{esc(t["translated_badge"] if lang == "en" else t["raw_badge"])}</span><p>{esc(t["markdown_para"])}</p></div><div class="markdown-toolbar"><span class="file-chip">MD</span><span>delivery-system-issue-draft.md</span><span class="toolbar-spacer"></span><button class="button button-small" type="button" data-copy-url="{mdurl}" data-copied-label="{esc(t["copied"])}" data-copy-error-label="{esc(t["copy_error"])}">{esc(t["copy"])}</button><a class="button button-small button-outline" href="{mdurl}" download="{"delivery-system-issue-draft.en.md" if lang == "en" else "delivery-system-issue-draft.md"}">{esc(t["download"])}</a></div><pre class="markdown-source" data-load-markdown="{mdurl}" data-load-error="{esc(t["copy_error"])}" aria-live="polite">{esc(t["markdown_loading"])}</pre><p class="copy-status" data-copy-status>{esc(t["copy_ready"])}</p></section>'
-    return f'<section class="subpage-hero demo-hero"><div class="subpage-grid"></div><div class="subpage-inner"><p class="eyebrow"><span class="eyebrow-mark"></span>{esc(t["demo_kicker"])}</p><h1>{t["demo_hero"]}</h1><p>{esc(t["demo_intro"])}</p></div></section><section class="demo-content"><div class="metric-grid">{metrics}</div><div class="demo-workspace"><div class="demo-tabs" role="tablist" aria-label="{"Recorded result stages" if lang == "en" else "记录结果阶段"}">{tabs}</div><div class="demo-stage">{raw}{preview}{md}</div></div><p class="demo-disclaimer">{esc(t["static_warning"])}</p></section>'
+    if lang == "en":
+        work_item_copy = "A Work Item is a structured planned delivery result. The planned create_issue operation records intent; it does not mean GitHub executed it. One Work Item usually maps to one planned Issue, and is not a remote Issue itself."
+        relations_heading, no_relations = "Planned relationships", "This case has no planned parent-child relationship or dependency."
+        parent_copy = "Parent / Sub-Issue · add_sub_issue · child → parent"
+        dependency_copy = "Dependency · add_dependency · dependent → prerequisite"
+        evidence_head = "Current receipt status"
+        statuses = [("Preview level", "Conceptual"), ("Repository claim", "Not provided"), ("Remote snapshot", "None"), ("Planned relationships", "None"), ("GitHub writes", "None occurred"), ("Revision", "1")]
+        technical = "Technical details", "The published historical sample does not include the values marked unavailable below."
+        missing_value = "Not provided in published sample"
+        current_desc = "No target repository or remote snapshot was provided; this is a conceptual plan."
+        aware_desc = "A target repository and relevant remote evidence are available, but the result has not met all write-eligibility conditions."
+        eligible_desc = "Remote queries are complete, the planned operations meet write conditions, and no relevant blockers remain. Separate Audit, Human Approval, and Authority conditions are still required."
+        planned = "Planned Work Item · not a created Issue"
+        outcome_label = "Outcome"
+        relation_explain = "An Independent Work Item has no planned relation. Other relation types below explain supported operation semantics; they are not present in this case."
+    else:
+        work_item_copy = "Work Item 是 DS 规划中的结构化交付结果。计划操作 create_issue 只表示操作意图，不代表已在 GitHub 执行。一个 Work Item 通常对应一个计划创建的 Issue，但它本身不是远端 Issue。"
+        relations_heading, no_relations = "计划关系", "此案例没有规划父子关系或依赖关系。"
+        parent_copy = "父项 / 子 Issue · add_sub_issue · 子项 → 父项"
+        dependency_copy = "依赖关系 · add_dependency · 依赖项 → 前置项"
+        evidence_head = "当前回执状态"
+        statuses = [("Preview Level", "Conceptual"), ("Repository Claim", "未提供"), ("Remote Snapshot", "无"), ("计划关系", "无"), ("GitHub 写入", "未发生"), ("Revision", "1")]
+        technical = "技术详情", "下列标记为未提供的值未包含在已发布的历史样本中。"
+        missing_value = "已发布样本未提供"
+        current_desc = "未提供目标仓库或远端快照；这是概念规划。"
+        aware_desc = "具备目标仓库和相关远端证据，但尚未满足完整写入资格条件。"
+        eligible_desc = "远端查询完整、规划操作符合写入条件且没有相关阻塞；仍需独立满足 Audit、Human Approval 和 Authority 条件。"
+        planned = "计划工作项 · 并非已创建的 Issue"
+        outcome_label = "预期结果"
+        relation_explain = "独立工作项没有规划关系。下方其他关系类型仅解释支持的操作语义，不代表本案例存在这些关系。"
+
+    item_fields = []
+    for key in ("Scope", "Non-goals", "Acceptance Criteria", "Verification"):
+        entries = "".join(f'<li>{esc(item)}</li>' for item in issue[key])
+        item_fields.append(f'<details class="item-field"><summary>{esc(labels[key])}<span>{len(issue[key])}</span></summary><ul>{entries}</ul></details>')
+    item = f'<section id="demo-panel-2" class="demo-stage-panel" role="tabpanel" aria-labelledby="demo-tab-2" data-demo-panel hidden><div class="stage-heading"><p class="eyebrow">02 / {esc(t["tab_headings"][1])}</p><h2>{planned}</h2><p>{work_item_copy}</p></div><article class="planned-item"><span class="translation-badge">{"ONE RECORDED WORK ITEM" if lang == "en" else "一项真实记录中的工作项"}</span><h3>{esc(work_item_title)}</h3><h4>{outcome_label}</h4><p>{esc(outcome)}</p><div class="item-fields">{"".join(item_fields)}</div><section class="relation-note"><h4>{relations_heading}</h4><p>{no_relations}</p><p>{relation_explain}</p><ul><li>Independent Work Item · {"no planned relationship" if lang == "en" else "无规划关系"}</li><li>{parent_copy}</li><li>{dependency_copy}</li></ul></section></article></section>'
+
+    level_details = [
+        ("Conceptual", current_desc, True),
+        ("RepositoryAware", aware_desc, False),
+        ("WriteEligible", eligible_desc, False),
+    ]
+    levels = "".join(f'<details class="level-node{" is-current" if current else ""}" {"open" if current else ""}><summary><span class="level-dot" aria-hidden="true"></span><span><strong>{name}</strong><small>{"CURRENT RECORDED LEVEL" if current and lang == "en" else "当前历史回执等级" if current else "CONTRACT EXPLANATION" if lang == "en" else "契约说明"}</small></span>{"<b class=\"current-pill\">CURRENT</b>" if current and lang == "en" else "<b class=\"current-pill\">当前</b>" if current else "<span class=\"level-chevron\" aria-hidden=\"true\">＋</span>"}</summary><p>{description}</p></details>' for name, description, current in level_details)
+    status_rows = "".join(f'<div><dt>{esc(key)}</dt><dd>{esc(value)}</dd></div>' for key, value in statuses)
+    preview_id = "preview-5e03cf0f4e7c4e978d1ff62b1405ebf8"
+    copy_label = "Copy Preview ID" if lang == "en" else "复制 Preview ID"
+    copy_status = "Copied" if lang == "en" else "已复制"
+    tech_values = [("Preview ID", preview_id, True), ("Request ID", missing_value, False), ("Revision", "1", False), ("Preview Level", "Conceptual", False), ("Repository Identity", missing_value, False), ("Remote Snapshot", "None" if lang == "en" else "无", False), ("Write Eligibility", "No" if lang == "en" else "否", False), ("Provenance Status", missing_value, False)]
+    tech_rows = "".join(f'<div><dt>{esc(key)}</dt><dd>{f"<code>{esc(value)}</code><button type=\"button\" class=\"copy-id\" data-copy-text=\"{esc(value)}\" data-copied-label=\"{copy_status}\">{copy_label}</button>" if copy else f"<code>{esc(value)}</code>"}</dd></div>' for key, value, copy in tech_values)
+    evidence = f'<section id="demo-panel-3" class="demo-stage-panel" role="tabpanel" aria-labelledby="demo-tab-3" data-demo-panel hidden><div class="stage-heading"><p class="eyebrow">03 / {esc(t["tab_headings"][2])}</p><h2>{evidence_head}</h2><p>{"This fixed track explains the contract levels. Only Conceptual is the level recorded for this case; selecting an explanation never changes the receipt." if lang == "en" else "此固定轨道用于解释契约等级。本案例真实记录仅为 Conceptual；展开其他说明不会改变回执。"}</p></div><div class="level-track" aria-label="Preview level contract">{levels}</div><dl class="evidence-status">{status_rows}</dl><details class="technical-details"><summary>{technical[0]}<span>{"IDENTIFIERS & PROVENANCE" if lang == "en" else "技术标识与来源"}</span></summary><p>{technical[1]}</p><dl class="technical-grid">{tech_rows}</dl><p class="copy-status" data-tech-copy-status aria-live="polite"></p></details></section>'
+
+    excerpt = esc(markdown_excerpt)
+    md = f'<section id="demo-panel-4" class="demo-stage-panel markdown-stage" role="tabpanel" aria-labelledby="demo-tab-4" data-demo-panel hidden><div class="stage-heading"><p class="eyebrow">04 / {esc(t["tab_headings"][3])}</p><h2>{esc(work_item_title)}</h2><span class="translation-badge">{esc(t["translated_badge"] if lang == "en" else t["raw_badge"])}</span><p>{esc(t["markdown_para"])}</p></div><div class="markdown-toolbar"><span class="file-chip">MD</span><span>delivery-system-issue-draft.md</span><span class="toolbar-spacer"></span><button class="button button-small" type="button" data-copy-url="{mdurl}" data-copied-label="{esc(t["copied"])}" data-copy-error-label="{esc(t["copy_error"])}">{esc(t["copy"])}</button><a class="button button-small button-outline" href="{mdurl}" download="{"delivery-system-issue-draft.en.md" if lang == "en" else "delivery-system-issue-draft.md"}">{esc(t["download"])}</a></div><pre class="markdown-source" data-load-markdown="{mdurl}" data-load-error="{esc(t["copy_error"])}" aria-live="polite">{esc(t["markdown_loading"])}</pre><p class="copy-status" data-copy-status>{esc(t["copy_ready"])}</p></section>'
+    return f'<section class="subpage-hero demo-hero"><div class="subpage-grid"></div><div class="subpage-inner"><p class="eyebrow"><span class="eyebrow-mark"></span>{esc(t["demo_kicker"])}</p><h1>{t["demo_hero"]}</h1><p>{esc(t["demo_intro"])}</p></div></section><section class="demo-content">{summary}<div class="demo-workspace"><div class="demo-tabs" role="tablist" aria-label="{"Recorded result layers" if lang == "en" else "记录成果层次"}">{tabs}</div><div class="demo-stage">{raw}{item}{evidence}{md}</div></div><p class="demo-disclaimer">{esc(t["static_warning"])}</p></section>'
 
 def docs_page(lang, prefix, t):
     blocks = []
