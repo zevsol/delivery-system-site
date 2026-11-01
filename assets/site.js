@@ -2,15 +2,22 @@
   const menu = document.querySelector('.menu-toggle');
   const nav = document.querySelector('.site-nav');
   if (menu && nav) {
+    const closeMenu = () => {
+      menu.setAttribute('aria-expanded', 'false');
+      nav.classList.remove('is-open');
+    };
     menu.addEventListener('click', () => {
       const expanded = menu.getAttribute('aria-expanded') === 'true';
       menu.setAttribute('aria-expanded', String(!expanded));
       nav.classList.toggle('is-open', !expanded);
     });
     nav.addEventListener('click', event => {
-      if (event.target.closest('a')) {
-        menu.setAttribute('aria-expanded', 'false');
-        nav.classList.remove('is-open');
+      if (event.target.closest('a')) closeMenu();
+    });
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && menu.getAttribute('aria-expanded') === 'true') {
+        closeMenu();
+        menu.focus();
       }
     });
   }
