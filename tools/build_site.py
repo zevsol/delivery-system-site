@@ -195,8 +195,11 @@ def demo_page(lang, prefix, t):
         dependency_copy = "Dependency · add_dependency · dependent → prerequisite"
         evidence_head = "Current receipt status"
         statuses = [("Preview level", "Conceptual"), ("Repository claim", "Not provided"), ("Remote snapshot", "None"), ("Planned relationships", "None"), ("GitHub writes", "None occurred"), ("Revision", "1")]
-        technical = "Technical details", "The published historical sample does not include the values marked unavailable below."
-        missing_value = "Not provided in published sample"
+        technical = "Technical details", "Historical MCP execution report · exact receipt values"
+        repository_explanation = "null means this Preview was not bound to a target repository."
+        snapshot_explanation = "null means no remote snapshot was attached to this Preview."
+        eligibility_explanation = "false means this Preview was not eligible for GitHub writes; it does not rule out Audit."
+        provenance_explanation = "The source was declared but was not externally verified."
         current_desc = "No target repository or remote snapshot was provided; this is a conceptual plan."
         aware_desc = "A target repository and relevant remote evidence are available, but the result has not met all write-eligibility conditions."
         eligible_desc = "Remote queries are complete, the planned operations meet write conditions, and no relevant blockers remain. Separate Audit, Human Approval, and Authority conditions are still required."
@@ -210,8 +213,11 @@ def demo_page(lang, prefix, t):
         dependency_copy = "依赖关系 · add_dependency · 依赖项 → 前置项"
         evidence_head = "当前回执状态"
         statuses = [("Preview Level", "Conceptual"), ("Repository Claim", "未提供"), ("Remote Snapshot", "无"), ("计划关系", "无"), ("GitHub 写入", "未发生"), ("Revision", "1")]
-        technical = "技术详情", "下列标记为未提供的值未包含在已发布的历史样本中。"
-        missing_value = "已发布样本未提供"
+        technical = "技术详情", "历史 MCP 执行报告 · 回执原始值"
+        repository_explanation = "null 表示此 Preview 未绑定目标仓库。"
+        snapshot_explanation = "null 表示此 Preview 未附带远端快照。"
+        eligibility_explanation = "false 表示此 Preview 不具备 GitHub 写入资格；这不代表绝对不能进行 Audit。"
+        provenance_explanation = "来源为声明值，未经外部验证。"
         current_desc = "未提供目标仓库或远端快照；这是概念规划。"
         aware_desc = "具备目标仓库和相关远端证据，但尚未满足完整写入资格条件。"
         eligible_desc = "远端查询完整、规划操作符合写入条件且没有相关阻塞；仍需独立满足 Audit、Human Approval 和 Authority 条件。"
@@ -233,10 +239,19 @@ def demo_page(lang, prefix, t):
     levels = "".join(f'<details class="level-node{" is-current" if current else ""}" {"open" if current else ""}><summary><span class="level-dot" aria-hidden="true"></span><span><strong>{name}</strong><small>{"CURRENT RECORDED LEVEL" if current and lang == "en" else "当前历史回执等级" if current else "CONTRACT EXPLANATION" if lang == "en" else "契约说明"}</small></span>{"<b class=\"current-pill\">CURRENT</b>" if current and lang == "en" else "<b class=\"current-pill\">当前</b>" if current else "<span class=\"level-chevron\" aria-hidden=\"true\">＋</span>"}</summary><p>{description}</p></details>' for name, description, current in level_details)
     status_rows = "".join(f'<div><dt>{esc(key)}</dt><dd>{esc(value)}</dd></div>' for key, value in statuses)
     preview_id = "preview-5e03cf0f4e7c4e978d1ff62b1405ebf8"
-    copy_label = "Copy Preview ID" if lang == "en" else "复制 Preview ID"
+    copy_label = "Copy" if lang == "en" else "复制"
     copy_status = "Copied" if lang == "en" else "已复制"
-    tech_values = [("Preview ID", preview_id, True), ("Request ID", missing_value, False), ("Revision", "1", False), ("Preview Level", "Conceptual", False), ("Repository Identity", missing_value, False), ("Remote Snapshot", "None" if lang == "en" else "无", False), ("Write Eligibility", "No" if lang == "en" else "否", False), ("Provenance Status", missing_value, False)]
-    tech_rows = "".join(f'<div><dt>{esc(key)}</dt><dd>{f"<code>{esc(value)}</code><button type=\"button\" class=\"copy-id\" data-copy-text=\"{esc(value)}\" data-copied-label=\"{copy_status}\">{copy_label}</button>" if copy else f"<code>{esc(value)}</code>"}</dd></div>' for key, value, copy in tech_values)
+    tech_values = [
+        ("Preview ID", preview_id, True, ""),
+        ("Request ID", "request-ea987c77b7924a2794d85d198f95dcd5", True, ""),
+        ("Revision", "1", False, ""),
+        ("Preview Level", "Conceptual", False, ""),
+        ("Repository Identity", "null", False, repository_explanation),
+        ("Remote Snapshot", "null", False, snapshot_explanation),
+        ("Write Eligibility", "false", False, eligibility_explanation),
+        ("Provenance Status", "declared_unverified", False, provenance_explanation),
+    ]
+    tech_rows = "".join(f'<div><dt>{esc(key)}</dt><dd><code>{esc(value)}</code>{f"<button type=\"button\" class=\"copy-id\" aria-label=\"{copy_label} {esc(key)}\" data-copy-text=\"{esc(value)}\" data-copied-label=\"{copy_status}\">{copy_label}</button>" if copy else ""}</dd>{f"<small style=\"grid-column:2;color:#687b95;font-size:9px;line-height:1.5\">{esc(explanation)}</small>" if explanation else ""}</div>' for key, value, copy, explanation in tech_values)
     evidence = f'<section id="demo-panel-3" class="demo-stage-panel" role="tabpanel" aria-labelledby="demo-tab-3" data-demo-panel hidden><div class="stage-heading"><p class="eyebrow">03 / {esc(t["tab_headings"][2])}</p><h2>{evidence_head}</h2><p>{"This fixed track explains the contract levels. Only Conceptual is the level recorded for this case; selecting an explanation never changes the receipt." if lang == "en" else "此固定轨道用于解释契约等级。本案例真实记录仅为 Conceptual；展开其他说明不会改变回执。"}</p></div><div class="level-track" aria-label="Preview level contract">{levels}</div><dl class="evidence-status">{status_rows}</dl><details class="technical-details"><summary>{technical[0]}<span>{"IDENTIFIERS & PROVENANCE" if lang == "en" else "技术标识与来源"}</span></summary><p>{technical[1]}</p><dl class="technical-grid">{tech_rows}</dl><p class="copy-status" data-tech-copy-status aria-live="polite"></p></details></section>'
 
     excerpt = esc(markdown_excerpt)
