@@ -27,6 +27,13 @@
   const storyProgress = document.querySelector('[data-story-progress]');
   const storyCounters = [...document.querySelectorAll('[data-story-counter]')];
   const storySections = [...document.querySelectorAll('[data-story-section]')];
+  const storySteps = document.querySelector('.story-steps');
+  let observerPaused = false;
+  let observerResumeTimer;
+  const resumeObserver = () => {
+    observerPaused = false;
+    window.clearTimeout(observerResumeTimer);
+  };
   function activateStoryStep(index, scroll = false) {
     if (!phaseButtons.length || !storyPanel) return;
     const safeIndex = Math.max(0, Math.min(index, phaseButtons.length - 1));
@@ -41,21 +48,38 @@
     storyPanel.querySelector('[data-panel-description]').textContent = button.dataset.description;
     const body = storyPanel.querySelector('[data-panel-content]');
     body.replaceChildren(template.content.cloneNode(true));
-    if (storyProgress) storyProgress.style.width = `${((safeIndex + 1) / phaseButtons.length) * 100}%`;
+    const progress = ((safeIndex + 1) / phaseButtons.length) * 100;
+    if (storyProgress) storyProgress.style.width = `${progress}%`;
+    if (storySteps) storySteps.style.setProperty('--stage-progress', `${progress}%`);
     storyCounters.forEach(counter => { counter.textContent = `${String(safeIndex + 1).padStart(2, '0')} / ${String(phaseButtons.length).padStart(2, '0')}`; });
     storyPanel.dataset.activeStep = String(safeIndex + 1);
     const progressBar = storyPanel.querySelector('[role="progressbar"]');
     if (progressBar) progressBar.setAttribute('aria-valuenow', String(safeIndex + 1));
-    if (scroll) storySections[safeIndex]?.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'center' });
+    if (scroll) {
+      observerPaused = true;
+      window.clearTimeout(observerResumeTimer);
+      observerResumeTimer = window.setTimeout(resumeObserver, 1100);
+      const target = window.matchMedia('(max-width: 760px)').matches ? storyPanel : storySections[safeIndex];
+      target?.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'center' });
+    }
   }
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   phaseButtons.forEach((button, index) => button.addEventListener('click', () => activateStoryStep(index, true)));
   if (storySections.length && 'IntersectionObserver' in window) {
     const observer = new IntersectionObserver(entries => {
+      if (observerPaused) return;
       const visible = entries.filter(entry => entry.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
       if (visible) activateStoryStep(Number(visible.target.dataset.storySection));
     }, { rootMargin: '-30% 0px -45% 0px', threshold: [0, 0.2, 0.5, 0.8] });
     storySections.forEach(section => observer.observe(section));
+    window.addEventListener('wheel', resumeObserver, { passive: true });
+    window.addEventListener('touchstart', resumeObserver, { passive: true });
+    window.addEventListener('pointerdown', event => {
+      if (event.clientX >= document.documentElement.clientWidth) resumeObserver();
+    });
+    window.addEventListener('keydown', event => {
+      if (['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', 'Home', 'End', ' '].includes(event.key)) resumeObserver();
+    });
   }
   activateStoryStep(0);
 
