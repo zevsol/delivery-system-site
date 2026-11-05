@@ -1,4 +1,21 @@
 (() => {
+  const installCloudflareBeacon = () => {
+    if (window.location.hostname !== 'ds.zevsol.com') return;
+    if (document.querySelector('script[data-cf-beacon]')) return;
+
+    const beacon = document.createElement('script');
+    beacon.type = 'module';
+    beacon.src = 'https://static.cloudflareinsights.com/beacon.min.js';
+    beacon.setAttribute('data-cf-beacon', JSON.stringify({ token: 'b938977f95e74883bc902ed62de72233' }));
+    document.body.appendChild(beacon);
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', installCloudflareBeacon, { once: true });
+  } else {
+    installCloudflareBeacon();
+  }
+
   const menu = document.querySelector('.menu-toggle');
   const nav = document.querySelector('.site-nav');
   if (menu && nav) {

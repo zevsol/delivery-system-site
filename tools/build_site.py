@@ -34,7 +34,7 @@ COPY = {
 "arch_kicker": "CAPABILITY IS NOT ACCEPTANCE", "arch_hero": "Designed for governed<br><em>delivery.</em>", "arch_intro": "The full model separates planning from remote change. This site reports what was verified in one local workflow and what still needs integration acceptance.",
 "arch_steps": [["01 · VERIFIED", "Plan", "Create a Sealed Preview from development intent.", "Verified in one local Codex + MCP environment."], ["02 · SOURCE CAPABILITY", "Audit", "Review a precise Preview and its evidence.", "Source capability; end-to-end acceptance is separate."], ["03 · EXPLICIT DECISION", "Approval", "Approve one Preview revision.", "A human decision, not a model inference."], ["04 · NOT ACCEPTED", "GitHub Apply", "Apply bounded GitHub changes and record receipts.", "Real GitHub Apply has not completed integration acceptance."]],
 "status_title": "Honest status", "status": [["DS Lite Preview", "Verified locally in one Codex environment"], ["Issue Markdown", "Recorded sample; Skill update may not be on public main"], ["GitHub Apply", "Integration acceptance not completed"], ["Formal release", "Not completed"]],
-"footnote": "No analytics, tracking pixels, ad scripts, live AI calls, or GitHub write actions.", "footer_note": "Static product website · product source and status maintained separately",
+"footnote": "Privacy-first Cloudflare Web Analytics · no advertising scripts, live AI calls, or GitHub write actions.", "footer_note": "Static product website · product source and status maintained separately",
 },
 "zh": {
 "nav": ["产品", "记录演示", "文档", "架构"], "switch": "English", "switch_label": "Switch language to English",
@@ -62,7 +62,7 @@ COPY = {
 "arch_kicker": "具备能力不等于通过验收", "arch_hero": "为受治理的交付<br><em>而设计。</em>", "arch_intro": "完整模型将规划与远端修改分开。本站说明哪些部分在一个本地流程中得到验证，哪些仍需集成验收。",
 "arch_steps": [["01 · 已验证", "Plan", "根据开发意图生成 Sealed Preview。", "已在一个本地 Codex + MCP 环境验证。"], ["02 · 源码能力", "Audit", "审查指定预览及其证据。", "源码具备能力；端到端验收仍需单独完成。"], ["03 · 明确决策", "Approval", "批准某个预览修订版本。", "由人明确决策，不从模型回复推断。"], ["04 · 尚未验收", "GitHub Apply", "执行有界 GitHub 修改并记录回执。", "真实 GitHub Apply 尚未完成集成验收。"]],
 "status_title": "如实说明当前状态", "status": [["DS Lite Preview", "已在一个 Codex 环境本地验证"], ["Issue Markdown 展示", "有记录样本；Skill 改动可能尚未进入公开 main"], ["GitHub Apply", "尚未完成集成验收"], ["正式发布", "尚未完成"]],
-"footnote": "不使用分析追踪、像素、广告脚本、实时 AI 调用或 GitHub 写入操作。", "footer_note": "静态产品网站 · 源码与产品状态分别维护",
+"footnote": "使用 Cloudflare Web Analytics 统计访问与性能指标 · 不使用广告脚本 · 不调用实时 AI 或执行 GitHub 写入。", "footer_note": "静态产品网站 · 源码与产品状态分别维护",
 }}
 def esc(value):
     return escape(str(value), quote=True)

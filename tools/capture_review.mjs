@@ -41,16 +41,24 @@ async function makePage(port, targetId) {
   let nextId = 1;
   const pending = new Map();
   const runtimeErrors = [];
+  const networkRequests = [];
+  const beaconRequests = [];
+  let call;
   socket.addEventListener('message', event => {
     const data = JSON.parse(event.data);
     if (data.method === 'Runtime.exceptionThrown') runtimeErrors.push(data.params.exceptionDetails.text || 'Runtime exception');
+    if (data.method === 'Network.requestWillBeSent') networkRequests.push(data.params.request.url);
+    if (data.method === 'Fetch.requestPaused') {
+      beaconRequests.push(data.params.request.url);
+      call('Fetch.failRequest', { requestId: data.params.requestId, errorReason: 'BlockedByClient' }).catch(() => {});
+    }
     if (data.id && pending.has(data.id)) {
       const entry = pending.get(data.id);
       pending.delete(data.id);
       data.error ? entry.reject(new Error(data.error.message)) : entry.resolve(data.result);
     }
   });
-  const call = (method, params = {}) => new Promise((resolve, reject) => {
+  call = (method, params = {}) => new Promise((resolve, reject) => {
     const id = nextId++;
     pending.set(id, { resolve, reject });
     socket.send(JSON.stringify({ id, method, params }));
@@ -60,7 +68,7 @@ async function makePage(port, targetId) {
     if (result.exceptionDetails) throw new Error(result.exceptionDetails.exception?.description || result.exceptionDetails.text);
     return result.result.value;
   };
-  return { call, evaluate, socket, runtimeErrors };
+  return { call, evaluate, socket, runtimeErrors, networkRequests, beaconRequests };
 }
 async function key(page, keyName, code, vk) {
   const event = { type: 'keyDown', key: keyName, code, windowsVirtualKeyCode: vk };
@@ -110,7 +118,7 @@ try {
 
   const debugPort = await freePort();
   const profile = await mkdtemp(path.join(os.tmpdir(), 'delivery-site-chrome-'));
-  browser = spawn(chromePath, ['--headless=new', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage', '--remote-debugging-port=' + debugPort, '--user-data-dir=' + profile, 'about:blank'], { stdio: 'ignore' });
+  browser = spawn(chromePath, ['--headless=new', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage', '--no-proxy-server', '--host-resolver-rules=MAP ds.zevsol.com 127.0.0.1,MAP zevsol.github.io 127.0.0.1,MAP zevsol.com 127.0.0.1', '--remote-debugging-port=' + debugPort, '--user-data-dir=' + profile, 'about:blank'], { stdio: 'ignore' });
   await waitFor('http://127.0.0.1:' + debugPort + '/json/version');
   const targets = await (await fetch('http://127.0.0.1:' + debugPort + '/json/list')).json();
   const target = targets.find(item => item.type === 'page');
@@ -118,6 +126,8 @@ try {
   const page = await makePage(debugPort, target.id);
   await page.call('Page.enable');
   await page.call('Runtime.enable');
+  await page.call('Network.enable');
+  await page.call('Fetch.enable', { patterns: [{ urlPattern: '*static.cloudflareinsights.com/beacon.min.js*', requestStage: 'Request' }] });
   await page.call('Browser.grantPermissions', { origin: 'http://127.0.0.1:' + serverPort, permissions: ['clipboardReadWrite', 'clipboardSanitizedWrite'] }).catch(() => {});
 
   const sizes = [[1440,1000],[768,1024],[390,844]];
@@ -267,6 +277,25 @@ try {
   await navigate(page, 'http://127.0.0.1:' + serverPort + '/demo/');
   const download = await page.evaluate('(async () => { const a=document.querySelector("a[download]"); return {name:a.download,ok:await fetch(a.href).then(r=>r.ok)} })()');
   assert(download.ok && download.name === 'delivery-system-issue-draft.en.md', 'Markdown download target exists with its expected filename');
+
+  for (const [hostname, label] of [['localhost', 'localhost'], ['127.0.0.1', '127.0.0.1'], ['zevsol.github.io', 'GitHub Pages preview host'], ['zevsol.com', 'apex domain']]) {
+    page.beaconRequests.length = 0;
+    await navigate(page, 'http://' + hostname + ':' + serverPort + '/');
+    await new Promise(resolve => setTimeout(resolve, 180));
+    assert(await page.evaluate('document.querySelectorAll("script[data-cf-beacon]").length === 0'), 'No Cloudflare Beacon element on ' + label);
+    assert(page.beaconRequests.length === 0, 'No Cloudflare Beacon request on ' + label);
+  }
+
+  page.beaconRequests.length = 0;
+  await navigate(page, 'http://ds.zevsol.com:' + serverPort + '/');
+  await new Promise(resolve => setTimeout(resolve, 220));
+  const beaconConfig = await page.evaluate('(() => { const script=document.querySelector("script[data-cf-beacon]"); return script && {type:script.type,src:script.src,config:JSON.parse(script.getAttribute("data-cf-beacon")),count:document.querySelectorAll("script[data-cf-beacon]").length,hostname:location.hostname} })()');
+  assert(beaconConfig?.hostname === 'ds.zevsol.com' && beaconConfig.count === 1, 'Production hostname injects one Beacon element (' + JSON.stringify({ beaconConfig, href: await page.evaluate('location.href'), readyState: await page.evaluate('document.readyState'), intercepted: page.beaconRequests }) + ')');
+  assert(beaconConfig?.type === 'module' && beaconConfig.src === 'https://static.cloudflareinsights.com/beacon.min.js' && beaconConfig.config.token === 'b938977f95e74883bc902ed62de72233', 'Production Beacon has the exact module URL and public site token');
+  assert(page.beaconRequests.length === 1 && page.beaconRequests[0] === 'https://static.cloudflareinsights.com/beacon.min.js', 'Production triggers exactly one Beacon request, intercepted before network access');
+  await page.evaluate('new Promise(resolve => { const script=document.createElement("script"); script.src="/assets/site.js"; script.onload=resolve; document.body.appendChild(script); })');
+  await new Promise(resolve => setTimeout(resolve, 120));
+  assert(await page.evaluate('document.querySelectorAll("script[data-cf-beacon]").length === 1') && page.beaconRequests.length === 1, 'Repeated shared runtime execution does not duplicate the Beacon injection');
 
   for (const [route, widths] of [['/demo/',[1440,390]],['/zh/demo/',[1440,390]]]) {
     for (const width of widths) {
