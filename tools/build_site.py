@@ -1,6 +1,8 @@
 """Build the bilingual, dependency-free static website pages."""
 from html import escape
+import json
 from pathlib import Path
+from urllib.parse import quote
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = "https://github.com/zevsol/delivery-system"
@@ -25,7 +27,7 @@ COPY = {
 "closing": "See the draft this Preview produced.", "closing_cta": "Review the complete Markdown", "disclaimer": "Recorded result · 1 work item · 0 GitHub writes",
 "capabilities": ["WHAT LITE DOES", "From request to reviewable work.", "This recorded case demonstrates one request becoming one structured item.", "CAN DO", ["Structure a request as a Work Item", "Return a Preview to inspect", "Make scope, non-goals, criteria, and checks visible", "Present a copyable GitHub Issue Markdown draft"], "NOT CLAIMED", ["Live AI generation on this website", "Verified decomposition for every request type", "Automatic GitHub Issue creation", "Accepted full GitHub Apply or a stable release"]],
 "handoff": ["RECORDED MARKDOWN · 1 WORK ITEM", "Review the real draft.", "This excerpt comes from the recorded Issue Markdown. Review the full request, criteria, and verification notes in the Demo."],
-"demo_kicker": "RECORDED OUTPUT · CONCEPTUAL PREVIEW", "demo_hero": "One request.<br><em>One reviewable draft.</em>", "demo_intro": "This page presents the recorded result from one local DS Lite run. It does not call AI live, request Authority, apply changes, or create a GitHub Issue.",
+"demo_kicker": "RECORDED OUTPUT · CONCEPTUAL PREVIEW", "demo_hero": "Recorded cases.<br><em>Clear work to review.</em>", "demo_intro": "Explore a recorded single-item case or a multi-item Conceptual Preview. This static page does not call AI live, request Authority, apply changes, or create a GitHub Issue.",
 "tabs": ["01 · Original request", "02 · Planned Work Item", "03 · Preview evidence", "04 · Issue Markdown"], "tab_headings": ["Original request · translated", "Planned Work Item", "Preview evidence", "Issue Markdown"], "request_badge": "ENGLISH TRANSLATION · ORIGINAL INPUT WAS CHINESE",
 "intent_para": "The original request recorded in the test is shown below.", "intent": "I want to build a personal portfolio website that supports desktop and mobile, with an introduction, project showcase, and contact information. The website should be mostly static, with no login, payments, or admin panel. It should provide basic keyboard accessibility and clear project links.", "receipt_para": "This is the recorded receipt identity and count summary. It represents a conceptual Preview; it is not repository-aware or eligible for Apply.", "markdown_para": "The Chinese Markdown file is the original sample. This English view is a presentation-layer translation, not a second Runtime receipt.", "raw_badge": "TRANSLATION · NOT THE ORIGINAL INPUT", "translated_badge": "TRANSLATION · NOT A SECOND RUNTIME RECEIPT", "copy": "Copy Markdown", "download": "Download Markdown", "copy_ready": "Ready to copy", "copied": "Copied to clipboard", "copy_error": "Copy unavailable. Use Download instead.", "markdown_loading": "Loading recorded Markdown…", "static_warning": "Static page · no live AI · no Authority or Apply · no GitHub Issue creation",
 "docs_kicker": "LOCAL SETUP · SOURCE CHECKOUT", "docs_hero": "Run the preview<br><em>in your own Host.</em>", "docs_intro": "The verified workflow runs from a local source checkout with a compatible MCP Host. Exact configuration screens differ by Host.",
@@ -53,7 +55,7 @@ COPY = {
 "closing": "看看预览整理出的草稿。", "closing_cta": "查看完整 Markdown", "disclaimer": "历史记录 · 1 个工作项 · 0 次 GitHub 写入",
 "capabilities": ["DS LITE 能做什么", "从需求到可审阅的工作项。", "这条真实记录展示一个需求如何整理成一个结构化工作项。", "可以做到", ["把需求整理成 Work Item", "返回可检查的 Preview", "明确范围、非目标、验收条件和验证方式", "提供可复制的 GitHub Issue Markdown 草稿"], "当前未验证", ["本站实时调用 AI 生成结果", "适用于所有需求类型的拆分", "自动创建 GitHub Issue", "DS Full GitHub Apply 已通过集成验收或正式发布"]],
 "handoff": ["历史 Markdown · 1 个工作项", "查看真实草稿。", "以下节选来自记录中的 Issue Markdown。打开 Demo 查看完整需求、验收条件和验证说明。"],
-"demo_kicker": "历史结果 · 概念预览", "demo_hero": "一个需求。<br><em>一份可审阅的草稿。</em>", "demo_intro": "此页面展示一次本地 DS Lite 运行的历史结果。它不会实时调用 AI、申请 Authority、执行 Apply，也不会创建 GitHub Issue。",
+"demo_kicker": "历史结果 · 概念预览", "demo_hero": "查看记录案例。<br><em>让计划清晰可审。</em>", "demo_intro": "你可以查看单工作项案例或多工作项概念级 Preview。此静态页面不会实时调用 AI、申请 Authority、执行 Apply，也不会创建 GitHub Issue。",
 "tabs": ["01 · 原始需求", "02 · 计划工作项", "03 · Preview 证据", "04 · Issue Markdown"], "tab_headings": ["原始需求", "计划工作项", "Preview 证据", "Issue Markdown"], "request_badge": "原始中文请求 · Runtime 输入",
 "intent_para": "以下为测试中记录的原始中文请求。", "intent": "我要开发一个个人作品集网站，支持桌面和移动端，包含个人介绍、项目展示和联系方式。网站以静态内容为主，不需要登录、支付或后台管理。要求基本键盘可访问性和清晰的项目链接。", "receipt_para": "这里展示准确的历史回执标识和计数。它是概念级预览，不针对仓库，也不具备 Apply 写入资格。", "markdown_para": "中文 Markdown 文件是原始样本。英文页面展示的是展示层翻译，不是另一份 Runtime 回执。", "raw_badge": "原始输入 · Runtime 中文记录", "translated_badge": "展示层英文翻译 · 非另一份 Runtime 回执", "copy": "复制 Markdown", "download": "下载 Markdown", "copy_ready": "可复制", "copied": "已复制到剪贴板", "copy_error": "无法复制，请使用下载。", "markdown_loading": "正在读取记录中的 Markdown…", "static_warning": "静态页面 · 不调用实时 AI · 不申请 Authority 或执行 Apply · 不创建 GitHub Issue",
 "docs_kicker": "本地配置 · 源码检出", "docs_hero": "在你自己的 Host 中<br><em>运行本地预览。</em>", "docs_intro": "已验证的流程从本地源码检出开始，并使用兼容的 MCP Host。不同 Host 的配置界面会有所不同。",
@@ -256,7 +258,155 @@ def demo_page(lang, prefix, t):
 
     excerpt = esc(markdown_excerpt)
     md = f'<section id="demo-panel-4" class="demo-stage-panel markdown-stage" role="tabpanel" aria-labelledby="demo-tab-4" data-demo-panel hidden><div class="stage-heading"><p class="eyebrow">04 / {esc(t["tab_headings"][3])}</p><h2>{esc(work_item_title)}</h2><span class="translation-badge">{esc(t["translated_badge"] if lang == "en" else t["raw_badge"])}</span><p>{esc(t["markdown_para"])}</p></div><div class="markdown-toolbar"><span class="file-chip">MD</span><span>delivery-system-issue-draft.md</span><span class="toolbar-spacer"></span><button class="button button-small" type="button" data-copy-url="{mdurl}" data-copied-label="{esc(t["copied"])}" data-copy-error-label="{esc(t["copy_error"])}">{esc(t["copy"])}</button><a class="button button-small button-outline" href="{mdurl}" download="{"delivery-system-issue-draft.en.md" if lang == "en" else "delivery-system-issue-draft.md"}">{esc(t["download"])}</a></div><pre class="markdown-source" data-load-markdown="{mdurl}" data-load-error="{esc(t["copy_error"])}" aria-live="polite">{esc(t["markdown_loading"])}</pre><p class="copy-status" data-copy-status>{esc(t["copy_ready"])}</p></section>'
-    return f'<section class="subpage-hero demo-hero"><div class="subpage-grid"></div><div class="subpage-inner"><p class="eyebrow"><span class="eyebrow-mark"></span>{esc(t["demo_kicker"])}</p><h1>{t["demo_hero"]}</h1><p>{esc(t["demo_intro"])}</p></div></section><section class="demo-content">{summary}<div class="demo-workspace"><div class="demo-tabs" role="tablist" aria-label="{"Recorded result layers" if lang == "en" else "记录成果层次"}">{tabs}</div><div class="demo-stage">{raw}{item}{evidence}{md}</div></div><p class="demo-disclaimer">{esc(t["static_warning"])}</p></section>'
+    single_case = f'<section class="demo-case-panel" id="demo-case-single" data-case-panel="single">{summary}<div class="demo-workspace"><div class="demo-tabs" role="tablist" aria-label="{"Recorded result layers" if lang == "en" else "记录成果层次"}">{tabs}</div><div class="demo-stage">{raw}{item}{evidence}{md}</div></div><p class="demo-disclaimer">{esc(t["static_warning"])}</p></section>'
+    fixture = json.loads((ROOT / "assets" / "r24-multi-work-item.json").read_text(encoding="utf-8"))
+    multi_case = multi_work_item_case(lang, fixture)
+    selector_label = "Choose a recorded case" if lang == "en" else "选择记录案例"
+    single_label = "Single Work Item" if lang == "en" else "单工作项"
+    multi_label = "Multi Work Item" if lang == "en" else "多工作项"
+    selector = f'<div class="demo-case-select"><label for="demo-case-select">{selector_label}</label><select id="demo-case-select" data-demo-case-select aria-controls="demo-cases"><option value="single">{single_label}</option><option value="multi">{multi_label}</option></select></div>'
+    return f'<section class="subpage-hero demo-hero"><div class="subpage-grid"></div><div class="subpage-inner"><p class="eyebrow"><span class="eyebrow-mark"></span>{esc(t["demo_kicker"])}</p><h1>{t["demo_hero"]}</h1><p>{esc(t["demo_intro"])}</p></div></section><section class="demo-content">{selector}<div id="demo-cases" data-active-case="single">{single_case}{multi_case}</div></section>'
+
+
+def multi_work_item_case(lang, fixture):
+    original = fixture["original_request"]["text"]
+    translated = fixture["presentation"]["en"]["original_request_translation"]
+    is_en = lang == "en"
+    p = "en" if is_en else "zh"
+    tr = fixture["presentation"]["en"]
+    items = fixture["work_items"]
+    by_ref = {item["client_ref"]: item for item in items}
+    relationships = fixture["relationships"]
+    translated_relationships = {(rel["from_client_ref"], rel["to_client_ref"]): rel["rationale"] for rel in fixture["presentation"]["en"]["relationships"]}
+    if len(translated_relationships) != len(relationships):
+        raise ValueError("Every planned relationship requires an English presentation translation")
+    parents = [rel for rel in relationships if rel["kind"] == "planned_parent"]
+    dependencies = [rel for rel in relationships if rel["kind"] == "planned_dependency"]
+    parent = next(item for item in items if item["role"]["value"] == "parent")
+    children = [item for item in items if item["role"]["value"] == "child"]
+    ac_total = sum(len(item["acceptance_criteria"]["value"]) for item in items)
+    summary = fixture["summary"]
+    if (len(items), len(parents), len(dependencies), ac_total) != (summary["work_items"], summary["parent_relationships"], summary["dependency_relationships"], 21):
+        raise ValueError("R24 fixture counts do not match its recorded summary")
+    txt = {
+        "title": "One request. Five planned Work Items." if is_en else "一个需求。五个计划工作项。",
+        "lead": "A recorded Conceptual Preview with one integration outcome and four independently scoped children." if is_en else "一份记录中的概念级 Preview：一个集成结果和四个范围独立的子项。",
+        "work_items": "Planned Work Items" if is_en else "计划工作项",
+        "parent": "Parent" if is_en else "父项",
+        "children": "Children" if is_en else "子项",
+        "relationships": "Planned relationships" if is_en else "计划关系",
+        "parent_links": "Parent links" if is_en else "父子关系",
+        "dependencies": "Dependencies" if is_en else "依赖关系",
+        "issues": "GitHub Issues created" if is_en else "已创建 GitHub Issue",
+        "request": "Original Chinese request" if is_en else "原始中文请求",
+        "english_translation": "English translation · presentation only, not Runtime input" if is_en else "英文翻译 · 仅用于展示，不是 Runtime 输入",
+        "original_label": "ORIGINAL CHINESE INPUT · RUNTIME REQUEST" if is_en else "Runtime 原始中文输入",
+        "translation_label": "ENGLISH TRANSLATION · NOT A SECOND RUNTIME OUTPUT" if is_en else "英文翻译 · 不是另一份 Runtime 输出",
+        "hierarchy": "Parent–Child plan" if is_en else "父子工作项计划",
+        "hierarchy_note": ("These are planned Work Items and conceptual parent links, not existing Issues or GitHub Sub-Issues. Relationship rationales are English presentation translations of the original Chinese, not a separate Runtime output." if is_en else "这些是计划工作项和概念性父子关系，不是现有 Issue 或 GitHub Sub-Issue。关系理由为中文原文的英文展示翻译，不是另一份 Runtime 输出。"),
+        "children_of": "Planned child of" if is_en else "计划父项",
+        "dependency_title": "Dependency plan" if is_en else "依赖计划",
+        "dependency_note": "Arrows point from the dependent item to its prerequisite." if is_en else "箭头从依赖项指向其前置项。",
+        "depends_on": "depends on" if is_en else "依赖",
+        "fields": ["Context / problem", "Outcome", "Scope", "Non-goals", "Acceptance criteria", "Verification", "Required capabilities", "Write metadata"] if is_en else ["背景 / 问题", "预期结果", "范围", "非目标", "验收条件", "验证说明", "所需能力", "写入元数据"],
+        "provenance": "Field provenance" if is_en else "字段来源标记",
+        "provenance_labels": {"user_asserted":"User asserted","model_proposed":"Model proposed · unverified","model_assumption":"Model assumption · confirm"} if is_en else {"user_asserted":"用户提供","model_proposed":"模型建议 · 未验证","model_assumption":"模型假设 · 待确认"},
+        "details": "Expand item details" if is_en else "展开工作项详情",
+        "preview_boundary": "Preview boundary" if is_en else "Preview 边界",
+        "boundary": "Conceptual Preview · no repository claim or remote snapshot · not write-eligible · no GitHub Issues created. Planned relationships are not remote GitHub relationships. Model-proposed fields are unverified declarations." if is_en else "概念级 Preview · 未声明仓库或远端快照 · 不具备写入资格 · 未创建 GitHub Issue。计划关系不是 GitHub 远端关系；模型建议字段属于未经验证的声明。",
+        "evidence": "Technical evidence" if is_en else "技术证据",
+        "technical": "Runtime receipt values transcribed from the recorded response. The fixture is not an original exported Runtime JSON byte stream." if is_en else "以下回执值转录自记录的 Runtime 响应。此 fixture 不是原始导出的 Runtime JSON 字节流。",
+        "ids": ["Preview ID", "Revision", "Request ID", "Workspace ID", "Preview level", "Stale", "Write eligible", "Blockers", "Findings", "Provenance", "Repository identity", "Remote snapshot"],
+        "markdown": "Illustrative Issue Markdown drafts" if is_en else "示例 Issue Markdown 草稿",
+        "markdown_disclosure": "Website-rendered Issue Markdown from recorded R24 structured Preview data. Not a separate Runtime Markdown receipt and not a GitHub Issue." if is_en else "根据 R24 结构化 Preview 数据由网站生成的 Issue Markdown。不是单独的 Runtime Markdown 回执，也不是 GitHub Issue。",
+        "copy": "Copy draft" if is_en else "复制草稿",
+        "download": "Download draft" if is_en else "下载草稿",
+        "copied": "Draft copied" if is_en else "草稿已复制",
+        "copy_error": "Copy unavailable" if is_en else "无法复制",
+        "draft_label": "Website-rendered · derived from structured Preview data" if is_en else "网站生成 · 来源为结构化 Preview 数据",
+        "md_headings": ["Background / Outcome", "Scope", "Non-goals", "Acceptance Criteria", "Verification", "Relationships"],
+        "lang_name": "en" if is_en else "zh",
+    }
+    def item_text(item, field):
+        if is_en:
+            if field == "required_capabilities":
+                return ["Confirm the existing project architecture, persistence, and authentication/authorization capabilities"]
+            if field == "write_metadata":
+                return item[field]["value"]
+            if field == "role":
+                return "Parent" if item[field]["value"] == "parent" else "Child"
+            return tr["items"][items.index(item)][field]
+        value = item[field]["value"]
+        if field == "acceptance_criteria":
+            return value
+        if field == "required_capabilities":
+            return value
+        return value
+    def md_draft(item):
+        title = item_text(item, "title")
+        outcome = item_text(item, "outcome")
+        fields = [f"# {title}", "", f"## {txt['md_headings'][0]}", "", item_text(item, "context_problem"), "", outcome, "", f"## {txt['md_headings'][1]}", ""]
+        fields += [f"- {line}" for line in ([item_text(item, "scope")] if is_en else [item_text(item, "scope")])]
+        fields += ["", f"## {txt['md_headings'][2]}", "", f"- {item_text(item, 'non_goals')}", "", f"## {txt['md_headings'][3]}", ""]
+        fields += [f"- [ ] {criterion}" for criterion in item_text(item, "acceptance_criteria")]
+        fields += ["", f"## {txt['md_headings'][4]}", "", item_text(item, "verification")]
+        links = [rel for rel in relationships if rel["from_client_ref"] == item["client_ref"]]
+        if links:
+            fields += ["", f"## {txt['md_headings'][5]}", ""]
+            fields += [f"- {rel['kind']}: {rel['from_client_ref']} → {rel['to_client_ref']} — {translated_relationships[(rel['from_client_ref'],rel['to_client_ref'])] if is_en else rel['rationale']['value']}" for rel in links]
+        return "\n".join(fields) + "\n"
+    def field_markup(item, key, label, value):
+        provenance = item[key]["declared_source"]
+        if isinstance(value, list):
+            rendered = "<ul>" + "".join(f"<li>{esc(str(entry))}</li>" for entry in value) + "</ul>"
+        elif isinstance(value, dict):
+            rendered = "<pre>{}</pre>".format(esc(json.dumps(value, ensure_ascii=False, indent=2)))
+        else:
+            rendered = f"<p>{esc(str(value))}</p>"
+        return f'<section class="multi-detail-field"><h4>{esc(label)} <span class="provenance-tag">{esc(txt["provenance_labels"][provenance])}</span></h4>{rendered}</section>'
+    cards = []
+    for item in items:
+        ref = item["client_ref"]
+        title = item_text(item, "title")
+        role = item["role"]["value"]
+        badge = txt["parent"] if role == "parent" else txt["children"]
+        fields = []
+        for key, label in zip(("context_problem","outcome","scope","non_goals","acceptance_criteria","verification","required_capabilities","write_metadata"), txt["fields"]):
+            fields.append(field_markup(item, key, label, item_text(item, key)))
+        prov = " · ".join(f'{key}: {txt["provenance_labels"][item[key]["declared_source"]]}' for key in ("role","title","context_problem","outcome","scope","non_goals","acceptance_criteria","verification","required_capabilities","write_metadata"))
+        fields.append(f'<section class="multi-detail-field"><h4>{esc(txt["provenance"])}</h4><p>{esc(prov)}</p></section>')
+        if role == "child":
+            parent_rel = next(rel for rel in parents if rel["from_client_ref"] == ref)
+            rationale = translated_relationships[(parent_rel["from_client_ref"], parent_rel["to_client_ref"])] if is_en else parent_rel["rationale"]["value"]
+            relation_line = f'{txt["children_of"]}: {parent_rel["from_client_ref"]} → {parent_rel["to_client_ref"]} · {rationale}'
+        else:
+            relation_line = f'{txt["parent"]} · {summary["children"]} {txt["children"].lower()}'
+        cards.append(f'<details class="multi-item-card" data-work-item="{ref}"{" open" if role == "parent" else ""}><summary><span class="work-item-role">{esc(badge)}</span><span class="work-item-title">{esc(title)}</span><span class="work-item-ref">{esc(ref)}</span></summary><div class="multi-item-content"><p class="planned-parent-line">{esc(relation_line)}</p>{"".join(fields)}</div></details>')
+    parent_children = "".join(f'<li><span class="tree-child">{esc(item_text(child,"title"))}</span><small>{esc(txt["children_of"])} {esc(parent["client_ref"])} · {esc(child["client_ref"])} → {esc(parent["client_ref"])}</small></li>' for child in children)
+    hierarchy = f'<section class="multi-section"><div class="multi-section-heading"><p class="eyebrow">01 / {esc(txt["hierarchy"])}</p><h2>{esc(txt["hierarchy"])}</h2><p>{esc(txt["hierarchy_note"])}</p></div><div class="work-item-tree"><div class="tree-parent"><span class="work-item-role">{esc(txt["parent"])}</span><strong>{esc(item_text(parent,"title"))}</strong><small>{esc(parent["client_ref"])}</small></div><ul>{parent_children}</ul></div></section>'
+    dependency_rows = []
+    for rel in dependencies:
+        source, target = by_ref[rel["from_client_ref"]], by_ref[rel["to_client_ref"]]
+        rationale = translated_relationships[(rel["from_client_ref"], rel["to_client_ref"])] if is_en else rel["rationale"]["value"]
+        dependency_rows.append(f'<li><div class="dependency-edge"><strong>{esc(item_text(source,"title"))}</strong><span aria-hidden="true">→</span><strong>{esc(item_text(target,"title"))}</strong></div><p>{esc(rel["from_client_ref"])} → {esc(rel["to_client_ref"])} · {esc(txt["depends_on"])} · {esc(rationale)}</p></li>')
+    dependency_view = f'<section class="multi-section"><div class="multi-section-heading"><p class="eyebrow">02 / {esc(txt["dependency_title"])}</p><h2>{esc(txt["dependency_title"])}</h2><p>{esc(txt["dependency_note"])}</p></div><ul class="dependency-list">{"".join(dependency_rows)}</ul></section>'
+    original_markup = f'<section class="multi-section request-section"><div class="multi-section-heading"><p class="eyebrow">{esc(txt["request"])}</p><h2>{esc(txt["request"])}</h2></div><span class="translation-badge">{esc(txt["original_label"])}</span><blockquote class="source-request" lang="zh">{esc(original)}</blockquote><span class="translation-badge">{esc(txt["translation_label"])}</span><blockquote class="translated-request" lang="en">{esc(translated)}</blockquote></section>'
+    count_cards = [(summary["work_items"],txt["work_items"]),(summary["parents"],txt["parent"]),(summary["children"],txt["children"]),(summary["planned_relationships"],txt["relationships"]),(summary["parent_relationships"],txt["parent_links"]),(summary["dependency_relationships"],txt["dependencies"]),(fixture["execution_history"]["github_issues_created"],txt["issues"])]
+    count_markup = "".join(f'<div><strong>{number}</strong><span>{esc(label)}</span></div>' for number,label in count_cards)
+    outcome = f'<div class="outcome-summary multi-outcome-summary"><div class="outcome-lead"><span class="file-chip">05</span><div><strong>{esc(txt["title"])}</strong><span>{esc(txt["lead"])}</span><small>{esc(txt["preview_boundary"])}</small></div></div><div class="outcome-counts">{count_markup}</div></div>'
+    item_section = f'<section class="multi-section"><div class="multi-section-heading"><p class="eyebrow">03 / {esc(txt["work_items"])}</p><h2>{esc(txt["work_items"])}</h2><p>{esc(txt["details"])}</p></div><div class="multi-item-list">{"".join(cards)}</div></section>'
+    boundary = f'<section class="multi-section preview-boundary"><h2>{esc(txt["preview_boundary"])}</h2><p>{esc(txt["boundary"])}</p></section>'
+    runtime = fixture["runtime"]
+    evidence_pairs = list(zip(txt["ids"],[runtime["preview_id"],runtime["revision"],runtime["request_id"],runtime["workspace_identity"],runtime["preview_level"],runtime["stale"],runtime["write_eligible"],runtime["blockers"],runtime["findings"],runtime["provenance_status"],runtime["repository_identity"],runtime["remote_snapshot"]]))
+    evidence_rows = "".join(f'<div><dt>{esc(str(label))}</dt><dd><code>{esc(json.dumps(value,ensure_ascii=False) if isinstance(value,(dict,list)) or value is None else str(value).lower() if isinstance(value,bool) else str(value))}</code></dd></div>' for label,value in evidence_pairs)
+    evidence = f'<details class="technical-details multi-technical"><summary>{esc(txt["evidence"])}<span>{"RECEIPT IDENTIFIERS & SOURCE" if is_en else "回执标识与来源"}</span></summary><p>{esc(txt["technical"])} {esc(fixture["source_note"])}</p><dl class="technical-grid">{evidence_rows}</dl></details>'
+    markdown_cards=[]
+    for item in items:
+        markdown=md_draft(item)
+        data_url="data:text/markdown;charset=utf-8,"+quote(markdown,safe="")
+        markdown_cards.append(f'<details class="multi-markdown-card" data-markdown-work-item="{esc(item["client_ref"])}"><summary>{esc(item_text(item,"title"))}<span>{esc(txt["draft_label"])}</span></summary><div class="markdown-toolbar"><button class="button button-small" type="button" data-copy-markdown data-copied-label="{esc(txt["copied"])}" data-copy-error-label="{esc(txt["copy_error"])}">{esc(txt["copy"])}</button><a class="button button-small button-outline" href="{esc(data_url)}" download="r24-{esc(item["client_ref"])}-issue-draft.{p}.md">{esc(txt["download"])}</a></div><textarea class="markdown-draft-source" readonly aria-label="{esc(item_text(item,"title"))} Markdown draft">{esc(markdown)}</textarea><p class="copy-status" data-draft-copy-status aria-live="polite"></p></details>')
+    markdown_section=f'<section class="multi-section"><div class="multi-section-heading"><p class="eyebrow">04 / {esc(txt["markdown"])}</p><h2>{esc(txt["markdown"])}</h2><p>{esc(txt["markdown_disclosure"])}</p></div><div class="multi-markdown-list">{"".join(markdown_cards)}</div></section>'
+    return f'<section class="demo-case-panel" id="demo-case-multi" data-case-panel="multi" hidden>{outcome}{original_markup}{hierarchy}{dependency_view}{item_section}{boundary}{evidence}{markdown_section}<p class="demo-disclaimer">{esc(txt["markdown_disclosure"])}</p></section>'
 
 def docs_page(lang, prefix, t):
     blocks = []
