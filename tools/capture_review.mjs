@@ -254,6 +254,15 @@ try {
   assert(zhDownload.ok && zhDownload.name === 'delivery-system-issue-draft.md', 'Chinese original Markdown download remains available');
 
   await navigate(page, 'http://127.0.0.1:' + serverPort + '/demo/');
+  await page.evaluate('document.querySelector("#demo-tab-2").click();document.querySelector("#demo-panel-2 details").open=true;document.querySelector("#demo-tab-1").click();document.querySelector("#demo-tab-1").focus()');
+  await key(page, 'Escape', 'Escape', 27);
+  assert(await page.evaluate('document.querySelector("#demo-panel-2 details[open]") !== null'), 'Escape leaves a disclosure open when its Single Work Item tab is hidden');
+  assert(await page.evaluate('document.activeElement === document.querySelector("#demo-tab-1")'), 'Escape preserves focus on the visible Single Work Item tab control');
+  await page.evaluate('document.querySelector("#demo-tab-2").click();document.querySelector("#demo-panel-2 details[open]").open=false;document.querySelector("#demo-tab-1").click()');
+  await page.evaluate('(()=>{const select=document.querySelector("#demo-case-select");select.value="multi";select.dispatchEvent(new Event("change",{bubbles:true}));const item=document.querySelector("#demo-case-multi [data-work-item=data]");item.open=true;const summary=item.querySelector("summary");select.value="single";select.dispatchEvent(new Event("change",{bubbles:true}));document.querySelector("#demo-tab-1").focus();summary.dispatchEvent(new KeyboardEvent("keydown",{key:"Escape",bubbles:true}));})()');
+  assert(await page.evaluate('document.querySelector("#demo-case-multi [data-work-item=data]").open'), 'Escape dispatched from a hidden Multi Work Item summary leaves its disclosure open');
+  assert(await page.evaluate('document.activeElement === document.querySelector("#demo-tab-1")'), 'Hidden Multi Work Item Escape target leaves focus on the visible Single Work Item tab');
+  await page.evaluate('(()=>{const select=document.querySelector("#demo-case-select");const item=document.querySelector("#demo-case-multi [data-work-item=data]");select.value="multi";select.dispatchEvent(new Event("change",{bubbles:true}));item.open=false;select.value="single";select.dispatchEvent(new Event("change",{bubbles:true}));})()');
   const r24 = JSON.parse(await readFile(path.join(root, 'assets/r24-multi-work-item.json'), 'utf8'));
   assert(r24.work_items.length === 5 && r24.relationships.length === 9 && r24.work_items.reduce((n, item) => n + item.acceptance_criteria.value.length, 0) === 21, 'R24 fixture contains five Work Items, nine relationships, and 21 acceptance criteria');
   assert(!Object.hasOwn(r24.runtime, 'operation_intents') && r24.execution_history.github_issues_created === 0 && r24.execution_history.source_note.includes('not a field asserted from the Runtime'), 'Runtime fields exclude unsupported operation_intents; zero GitHub Issues is separately sourced from execution history');

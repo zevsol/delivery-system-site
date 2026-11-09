@@ -130,8 +130,13 @@
 
   document.addEventListener('keydown', event => {
     if (event.key !== 'Escape') return;
-    const openItems = [...document.querySelectorAll('.demo-case-panel:not([hidden]) details[open]')];
-    const openDetails = event.target.closest('details[open]') || openItems.at(-1);
+    const openItems = [...document.querySelectorAll('.demo-case-panel:not([hidden]) details[open]')]
+      .filter(item => !item.closest('[hidden]'));
+    const targetDetails = event.target.closest('details[open]');
+    const visibleTargetDetails = targetDetails && !targetDetails.closest('[hidden]')
+      ? targetDetails
+      : null;
+    const openDetails = visibleTargetDetails || openItems.at(-1);
     if (!openDetails) return;
     openDetails.open = false;
     openDetails.querySelector('summary')?.focus();
