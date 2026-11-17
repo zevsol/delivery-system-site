@@ -190,7 +190,7 @@ try {
       assert(await page.evaluate('document.querySelector("[data-panel-content]").textContent.includes("验收条件") && document.querySelector("[data-panel-content]").textContent.includes("页面包含个人介绍、项目展示和联系方式。")'), 'B03 Chinese: Preview uses the source Chinese acceptance criteria');
     }
 
-    for (const [width, height, isMobile] of [[1440,1000,false],[768,1024,false],[390,844,true]]) {
+    for (const [width, height, isMobile] of [[1440,1000,false],[1363,936,false],[768,1024,false],[390,844,true]]) {
       await page.call('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: isMobile });
       await page.call('Emulation.setTouchEmulationEnabled', { enabled: isMobile, maxTouchPoints: isMobile ? 1 : 0 });
       await navigate(page, 'http://127.0.0.1:' + serverPort + route);
