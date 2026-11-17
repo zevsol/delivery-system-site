@@ -172,6 +172,24 @@ try {
   }
 
   for (const [lang, route] of [['en','/'],['zh','/zh/']]) {
+    await page.call('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false });
+    await navigate(page, 'http://127.0.0.1:' + serverPort + route);
+    await page.evaluate('document.querySelectorAll("[data-story-step]")[1].click()');
+    if (lang === 'en') {
+      assert(await page.evaluate('document.querySelectorAll("[data-panel-content] details").length === 4 && document.querySelector("[data-panel-content] h4").textContent === "Build a responsive personal portfolio website"'), 'B01 English: Preview panel shows the recorded Work Item and four source sections');
+      await page.evaluate('document.querySelector("[data-panel-content] details summary").focus()');
+      await key(page, 'Enter', 'Enter', 13);
+      assert(await page.evaluate('document.querySelector("[data-panel-content] details").open && document.querySelector("[data-panel-content] details li").textContent === "Show a personal introduction."'), 'B02 English: Work Item scope disclosure remains keyboard accessible and source-backed');
+      await page.evaluate('document.querySelectorAll("[data-story-step]")[2].click()');
+      assert(await page.evaluate('document.querySelector("[data-panel-content]").textContent.includes("The page includes an introduction, project showcase, and contact information.") && document.querySelector("[data-panel-content]").textContent.includes("EXCERPT") && new URL(document.querySelector("[data-panel-content] a").href).pathname === "/demo/"'), 'B03 English: Stage 03 shows the translated source Markdown excerpt and links to the full Demo');
+    } else {
+      assert(await page.evaluate('document.querySelectorAll("[data-panel-content] details").length === 4 && document.querySelector("[data-panel-content] h4").textContent === "开发响应式个人作品集网站"'), 'B01 Chinese: Preview panel shows the recorded Work Item and four source sections');
+      await page.evaluate('document.querySelectorAll("[data-story-step]")[2].click()');
+      assert(await page.evaluate('document.querySelector("[data-panel-content]").textContent.includes("页面包含个人介绍、项目展示和联系方式。") && document.querySelector("[data-panel-content]").textContent.includes("节选") && new URL(document.querySelector("[data-panel-content] a").href).pathname === "/zh/demo/"'), 'B02 Chinese: Stage 03 shows the original source Markdown excerpt and links to the full Demo');
+      await page.evaluate('document.querySelectorAll("[data-story-step]")[1].click()');
+      assert(await page.evaluate('document.querySelector("[data-panel-content]").textContent.includes("验收条件") && document.querySelector("[data-panel-content]").textContent.includes("页面包含个人介绍、项目展示和联系方式。")'), 'B03 Chinese: Preview uses the source Chinese acceptance criteria');
+    }
+
     for (const [width, height, isMobile] of [[1440,1000,false],[768,1024,false],[390,844,true]]) {
       await page.call('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: isMobile });
       await page.call('Emulation.setTouchEmulationEnabled', { enabled: isMobile, maxTouchPoints: isMobile ? 1 : 0 });
