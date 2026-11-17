@@ -1,0 +1,46 @@
+{
+  "screenshots": "D:\\Workspace\\Lab\\delivery-system-website-ux01-contract-03\\.review-screenshots\\r5-fix-final",
+  "viewportChecks": 24,
+  "totalChecks": 370,
+  "runtimeErrors": [],
+  "consoleErrors": [],
+  "externalLinks": [
+    {
+      "href": "https://github.com/zevsol/delivery-system",
+      "status": 200
+    },
+    {
+      "href": "https://github.com/zevsol/delivery-system/issues",
+      "status": 200
+    },
+    {
+      "href": "https://github.com/zevsol/delivery-system/tree/main/skills/plan-github-work-items",
+      "status": "unreachable",
+      "error": "TimeoutError"
+    },
+    {
+      "href": "https://github.com/zevsol/delivery-system/blob/main/docs/getting-started.md",
+      "status": "unreachable",
+      "error": "TimeoutError"
+    },
+    {
+      "href": "https://github.com/zevsol/delivery-system/blob/main/docs/user-workflow.md",
+      "status": "unreachable",
+      "error": "TimeoutError"
+    },
+    {
+      "href": "https://github.com/zevsol/delivery-system/blob/main/docs/host-configuration.md",
+      "status": 200
+    },
+    {
+      "href": "https://github.com/zevsol/delivery-system/blob/main/docs/release-compatibility.md",
+      "status": "unreachable",
+      "error": "TimeoutError"
+    },
+    {
+      "href": "https://github.com/zevsol/delivery-system/blob/main/docs/architecture-and-lifecycle.md",
+      "status": "unreachable",
+      "error": "TimeoutError"
+    }
+  ]
+}

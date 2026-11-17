@@ -93,7 +93,8 @@
   function updateStoryProtection() {
     if (!storyPanel) return;
     const focusedInPanel = storyPanel.contains(document.activeElement);
-    const disclosureOpen = storyPanel.querySelector('details[open]') !== null;
+    const activeContent = storyContents[storyState.activeStage];
+    const disclosureOpen = Boolean(activeContent?.querySelector('details[open]'));
     storyState.protection = focusedInPanel ? 'panel-focus' : disclosureOpen ? 'disclosure-open' : 'none';
     storyPanel.dataset.interactionProtection = storyState.protection;
   }
