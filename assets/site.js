@@ -118,10 +118,25 @@
     demoTabs[next].click();
   }));
 
+  const caseSelect = document.querySelector('[data-demo-case-select]');
+  const casePanels = [...document.querySelectorAll('[data-case-panel]')];
+  if (caseSelect && casePanels.length) {
+    caseSelect.addEventListener('change', () => {
+      casePanels.forEach(panel => { panel.hidden = panel.dataset.casePanel !== caseSelect.value; });
+      const cases = document.querySelector('#demo-cases');
+      if (cases) cases.dataset.activeCase = caseSelect.value;
+    });
+  }
+
   document.addEventListener('keydown', event => {
     if (event.key !== 'Escape') return;
-    const openItems = [...document.querySelectorAll('.demo-stage-panel:not([hidden]) details[open]')];
-    const openDetails = event.target.closest('details[open]') || openItems.at(-1);
+    const openItems = [...document.querySelectorAll('.demo-case-panel:not([hidden]) details[open]')]
+      .filter(item => !item.closest('[hidden]'));
+    const targetDetails = event.target.closest('details[open]');
+    const visibleTargetDetails = targetDetails && !targetDetails.closest('[hidden]')
+      ? targetDetails
+      : null;
+    const openDetails = visibleTargetDetails || openItems.at(-1);
     if (!openDetails) return;
     openDetails.open = false;
     openDetails.querySelector('summary')?.focus();
@@ -151,6 +166,19 @@
       if (status) status.textContent = button.dataset.copiedLabel || 'Copied';
     } catch {
       if (status) status.textContent = button.dataset.copyErrorLabel || 'Copy unavailable — use Download instead.';
+    }
+  }));
+
+  document.querySelectorAll('[data-copy-markdown]').forEach(button => button.addEventListener('click', async () => {
+    const card = button.closest('.multi-markdown-card');
+    const source = card?.querySelector('.markdown-draft-source');
+    const status = card?.querySelector('[data-draft-copy-status]');
+    try {
+      if (!source) throw new Error('Markdown draft unavailable');
+      await navigator.clipboard.writeText(source.value);
+      if (status) status.textContent = button.dataset.copiedLabel || 'Copied';
+    } catch {
+      if (status) status.textContent = button.dataset.copyErrorLabel || 'Copy unavailable';
     }
   }));
 
