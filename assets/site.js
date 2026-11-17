@@ -43,146 +43,53 @@
   const storyPanel = document.querySelector('[data-story-panel]');
   const storyProgress = document.querySelector('[data-story-progress]');
   const storyCounters = [...document.querySelectorAll('[data-story-counter]')];
-  const storySections = [...document.querySelectorAll('[data-story-section]')];
   const storyContents = [...document.querySelectorAll('[data-story-content]')];
-  const storySteps = document.querySelector('.story-steps');
-  const reducedMotionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
-  const storyState = {
-    activeStage: 0,
-    mode: 'automatic',
-    manualPriority: false,
-    protection: 'none',
-    device: 'desktop',
-    autoEligible: true,
-    manualFallback: false
-  };
 
-  function updateStoryMode() {
-    const width = window.innerWidth;
-    storyState.device = width <= 760 ? 'mobile' : width <= 1000 ? 'tablet' : 'desktop';
-    if (storyState.device === 'mobile') {
-      storyState.autoEligible = false;
-      storyState.mode = 'manual';
-      storyState.manualFallback = true;
-    } else if (storyState.device === 'tablet') {
-      const panelRect = storyPanel?.getBoundingClientRect();
-      const panelFits = panelRect && panelRect.height <= window.innerHeight - 80;
-      const panelReadable = storyPanel && storyPanel.scrollHeight <= storyPanel.clientHeight + 1;
-      storyState.autoEligible = Boolean(panelFits && panelReadable);
-      if (!storyState.autoEligible) {
-        storyState.mode = 'manual';
-        storyState.manualFallback = true;
-      } else if (storyState.manualFallback) {
-        storyState.manualFallback = false;
-        if (!storyState.manualPriority) storyState.mode = 'automatic';
-      }
-    } else {
-      storyState.autoEligible = true;
-      if (storyState.device === 'desktop' && storyState.manualFallback) {
-        storyState.manualFallback = false;
-        if (!storyState.manualPriority) storyState.mode = 'automatic';
-      }
-    }
-    if (storyPanel) {
-      storyPanel.dataset.interactionMode = storyState.mode;
-      storyPanel.dataset.autoEligible = String(storyState.autoEligible);
-      storyPanel.dataset.device = storyState.device;
-    }
-  }
-
-  function updateStoryProtection() {
-    if (!storyPanel) return;
-    const focusedInPanel = storyPanel.contains(document.activeElement);
-    const activeContent = storyContents[storyState.activeStage];
-    const disclosureOpen = Boolean(activeContent?.querySelector('details[open]'));
-    storyState.protection = focusedInPanel ? 'panel-focus' : disclosureOpen ? 'disclosure-open' : 'none';
-    storyPanel.dataset.interactionProtection = storyState.protection;
-  }
-
-  function activateStoryStep(index, source = 'automatic') {
+  function activateStoryStep(index) {
     if (!phaseButtons.length || !storyPanel) return;
     const safeIndex = Math.max(0, Math.min(index, phaseButtons.length - 1));
     const button = phaseButtons[safeIndex];
-    if (source === 'manual') {
-      storyState.mode = 'manual';
-      storyState.manualPriority = true;
-      storyPanel.dataset.manualSelection = 'true';
-      if (storyPanel.contains(document.activeElement)) button.focus({ preventScroll: true });
-    }
-    const changed = storyState.activeStage !== safeIndex;
-    storyState.activeStage = safeIndex;
+    const changed = Number(storyPanel.dataset.activeStep) !== safeIndex + 1;
+
     phaseButtons.forEach((item, i) => {
       item.setAttribute('aria-current', i === safeIndex ? 'step' : 'false');
       item.classList.toggle('is-active', i === safeIndex);
     });
-    storyContents.forEach((content, i) => { content.hidden = i !== safeIndex; });
-    storyPanel.querySelector('[data-panel-kicker]').textContent = button.dataset.kicker;
-    storyPanel.querySelector('[data-panel-title]').textContent = button.dataset.title;
-    storyPanel.querySelector('[data-panel-description]').textContent = button.dataset.description;
+
+    storyContents.forEach((content, i) => {
+      content.hidden = i !== safeIndex;
+    });
+
+    const kicker = storyPanel.querySelector('[data-panel-kicker]');
+    const title = storyPanel.querySelector('[data-panel-title]');
+    const description = storyPanel.querySelector('[data-panel-description]');
+    if (kicker) kicker.textContent = button.dataset.kicker || '';
+    if (title) title.textContent = button.dataset.title || '';
+    if (description) description.textContent = button.dataset.description || '';
+
     const progress = ((safeIndex + 1) / phaseButtons.length) * 100;
-    if (storyProgress) storyProgress.style.width = `${progress}%`;
-    if (storySteps) storySteps.style.setProperty('--stage-progress', `${progress}%`);
-    storyCounters.forEach(counter => { counter.textContent = `${String(safeIndex + 1).padStart(2, '0')} / ${String(phaseButtons.length).padStart(2, '0')}`; });
+    if (storyProgress) storyProgress.style.width = String(progress) + '%';
+    storyCounters.forEach(counter => {
+      counter.textContent = String(safeIndex + 1).padStart(2, '0') + ' / ' + String(phaseButtons.length).padStart(2, '0');
+    });
+
     storyPanel.dataset.activeStep = String(safeIndex + 1);
     const progressBar = storyPanel.querySelector('[role="progressbar"]');
     if (progressBar) progressBar.setAttribute('aria-valuenow', String(safeIndex + 1));
-    updateStoryMode();
-    updateStoryProtection();
-    if (source === 'manual') {
-      const target = storyState.device === 'mobile' ? storyPanel.querySelector('[data-panel-title]') : storySections[safeIndex];
-      target?.scrollIntoView({ behavior: reducedMotionPreference.matches ? 'auto' : 'smooth', block: storyState.device === 'mobile' ? 'start' : 'center' });
+
+    if (changed) {
+      storyPanel.dispatchEvent(new CustomEvent('storystagechange', {
+        bubbles: true,
+        detail: { stage: safeIndex + 1, source: 'manual' }
+      }));
     }
-    if (changed) storyPanel.dispatchEvent(new CustomEvent('storystagechange', { bubbles: true, detail: { stage: safeIndex + 1, source } }));
   }
 
-  phaseButtons.forEach((button, index) => button.addEventListener('click', () => activateStoryStep(index, 'manual')));
-  if (storyPanel) {
-    storyPanel.addEventListener('focusin', updateStoryProtection);
-    storyPanel.addEventListener('focusout', () => window.requestAnimationFrame(updateStoryProtection));
-    storyPanel.addEventListener('toggle', updateStoryProtection, true);
-  }
-  document.addEventListener('toggle', event => {
-    if (event.target.matches?.('.story-stage-content details')) window.requestAnimationFrame(() => { updateStoryMode(); updateStoryProtection(); });
-  }, true);
-
-  const scrollKeys = new Set(['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', 'Home', 'End', ' ']);
-  const isScrollKeyTarget = target => !target.closest('button,a,input,select,textarea,summary,[contenteditable="true"]');
-  const resumeAutomaticProgression = () => {
-    if (storyState.autoEligible && storyState.device !== 'mobile') {
-      storyState.mode = 'automatic';
-      storyState.manualPriority = false;
-      storyState.manualFallback = false;
-      if (storyPanel) {
-        delete storyPanel.dataset.manualSelection;
-        storyPanel.dataset.interactionMode = storyState.mode;
-      }
-    }
-  };
-  window.addEventListener('wheel', resumeAutomaticProgression, { passive: true });
-  window.addEventListener('touchstart', () => {
-    if (storyState.device !== 'mobile') resumeAutomaticProgression();
-  }, { passive: true });
-  window.addEventListener('keydown', event => {
-    if (scrollKeys.has(event.key) && isScrollKeyTarget(event.target)) resumeAutomaticProgression();
-  });
-  window.addEventListener('pointerdown', event => {
-    if (event.clientX >= document.documentElement.clientWidth) resumeAutomaticProgression();
+  phaseButtons.forEach((button, index) => {
+    button.addEventListener('click', () => activateStoryStep(index));
   });
 
-  updateStoryMode();
-  updateStoryProtection();
-  if (storySections.length && 'IntersectionObserver' in window) {
-    const observer = new IntersectionObserver(entries => {
-      if (!storyState.autoEligible || storyState.mode !== 'automatic' || storyState.manualPriority || storyState.protection !== 'none') return;
-      const visible = entries.filter(entry => entry.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-      if (visible) activateStoryStep(Number(visible.target.dataset.storySection), 'automatic');
-    }, { rootMargin: '-30% 0px -45% 0px', threshold: [0, 0.2, 0.5, 0.8] });
-    storySections.forEach(section => observer.observe(section));
-  }
-  if (storyPanel && 'ResizeObserver' in window) new ResizeObserver(() => updateStoryMode()).observe(storyPanel);
-  window.addEventListener('resize', updateStoryMode, { passive: true });
-  if (storyPanel) reducedMotionPreference.addEventListener?.('change', () => { storyPanel.dataset.reducedMotion = String(reducedMotionPreference.matches); });
-  activateStoryStep(0);
+  if (phaseButtons.length && storyPanel) activateStoryStep(0);
 
   const demoTabs = [...document.querySelectorAll('[data-demo-tab]')];
   const demoPanels = [...document.querySelectorAll('[data-demo-panel]')];
