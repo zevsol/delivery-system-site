@@ -3,11 +3,12 @@ import { createServer } from 'node:net';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const shots = path.join(root, '.review-screenshots', 'r5-fix-final');
 const durableEvidence = path.join(root, '.github', 'ux01-evidence');
+const r4Evidence = process.env.UX01_R4_EVIDENCE_DIR || path.join(shots, 'r4');
 const chromePath = process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 const routes = ['/','/demo/','/docs/','/architecture/','/zh/','/zh/demo/','/zh/docs/','/zh/architecture/'];
 const checks = [];
@@ -18,6 +19,11 @@ const reports = [];
 const storyViewports = [];
 const externalResults = [];
 let activeStoryViewport = null;
+const pointerInteractionResults = [];
+const mobileTouchResults = [];
+const inertialScrollResults = [];
+const mobileTargetAudits = [];
+const visualScreenshots = [];
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -138,6 +144,40 @@ async function touchSwipe(page, x = 320, fromY = 760, toY = 190) {
   await page.call('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   await new Promise(resolve => setTimeout(resolve, 450));
 }
+async function touchFling(page, width, height) {
+  const x = Math.round(width / 2);
+  const fromY = Math.round(height * 0.76);
+  const moveYs = [0.60, 0.44, 0.28, 0.12].map(ratio => Math.round(height * ratio));
+  const samples = [];
+  await page.call('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ id: 1, x, y: fromY, force: 1 }] });
+  await new Promise(resolve => setTimeout(resolve, 20));
+  for (const y of moveYs) {
+    await page.call('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ id: 1, x, y, force: 1 }] });
+    samples.push(await page.evaluate('({y:scrollY,stage:document.querySelector("[data-story-panel]").dataset.activeStep,open:document.querySelector("[data-story-content=\\"1\\"] details").open})'));
+    await new Promise(resolve => setTimeout(resolve, 14));
+  }
+  await page.call('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  for (let i = 0; i < 18; i++) {
+    await new Promise(resolve => setTimeout(resolve, 35));
+    samples.push(await page.evaluate('({y:scrollY,stage:document.querySelector("[data-story-panel]").dataset.activeStep,open:document.querySelector("[data-story-content=\\"1\\"] details").open})'));
+  }
+  return samples;
+}
+async function pointerActivate(page, index) {
+  const point = await page.evaluate(`(()=>{const r=document.querySelectorAll('[data-story-step]')[${index}].getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2}})()`);
+  await page.call('Input.dispatchMouseEvent', { type: 'mouseMoved', x: point.x, y: point.y });
+  await page.call('Input.dispatchMouseEvent', { type: 'mousePressed', x: point.x, y: point.y, button: 'left', buttons: 1, clickCount: 1 });
+  await page.call('Input.dispatchMouseEvent', { type: 'mouseReleased', x: point.x, y: point.y, button: 'left', buttons: 0, clickCount: 1 });
+  await new Promise(resolve => setTimeout(resolve, 100));
+}
+async function touchTap(page, selector) {
+  const point = await page.evaluate(`(()=>{const el=document.querySelector(${JSON.stringify(selector)}),r=el.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2,hit=document.elementFromPoint(x,y);return {x,y,scrollY,rect:{left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height},hit:hit?.tagName+"."+(typeof hit?.className==="string"?hit.className:""),target:el.outerHTML.slice(0,120)}})()`);
+  await page.call('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: point.x, y: point.y, id: 1 }], modifiers: 0 });
+  await new Promise(resolve => setTimeout(resolve, 45));
+  await page.call('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [], modifiers: 0 });
+  await new Promise(resolve => setTimeout(resolve, 250));
+  return point;
+}
 async function captureEvidence(page, filename) {
   const shot = await page.call('Page.captureScreenshot', { format: 'jpeg', quality: 78, captureBeyondViewport: false, fromSurface: true });
   await writeFile(path.join(durableEvidence, filename), Buffer.from(shot.data, 'base64'));
@@ -179,6 +219,7 @@ async function capture(page, port, url, width, height, filename) {
 try {
   await mkdir(shots, { recursive: true });
   await mkdir(durableEvidence, { recursive: true });
+  await mkdir(r4Evidence, { recursive: true });
   const serverPort = await freePort();
   server = spawn('python', ['-m', 'http.server', String(serverPort), '--bind', '127.0.0.1'], { cwd: root, stdio: 'ignore' });
   await waitFor('http://127.0.0.1:' + serverPort + '/');
@@ -252,6 +293,12 @@ try {
       assert(initial.stage === '1' && initial.mode === 'manual' && initial.eligible === 'false', 'S01 ' + lang + ' ' + width + ': Story starts deterministically in Manual-first Stage 01');
       assert(initial.current === 1 && initial.buttons.length === 3 && initial.buttons.every(x=>x.target), 'S02 ' + lang + ' ' + width + ': three semantic stage controls have valid aria-controls and exactly one active step');
       assert(initial.position === 'static' && initial.overflowY === 'visible' && initial.maxHeight === 'none' && initial.scrollHeight <= initial.clientHeight + 1, 'S03 ' + lang + ' ' + width + ': Story detail panel follows natural document flow without sticky or nested scrolling');
+      if (isMobile) {
+        await page.evaluate('document.querySelectorAll("[data-story-step]")[1].click()');
+        const targets = await page.evaluate('(()=>{const selectors=[".menu-toggle",".language-switch",".preview-groups summary",".story-stop",".hero-actions .button",".site-nav a",".footer-links a",".brand",".text-link"];const nav=document.querySelector(".site-nav"),wasOpen=nav?.classList.contains("is-open");nav?.classList.add("is-open");const nodes=[...document.querySelectorAll(\'a[href],button,summary,input,select,[role="button"]\')];const visible=nodes.filter(x=>{const r=x.getBoundingClientRect(),s=getComputedStyle(x);return r.width>0&&r.height>0&&s.display!=="none"&&s.visibility!=="hidden"&&!x.closest("[hidden]")});const rows=visible.map(x=>{const r=x.getBoundingClientRect();return {selector:x.tagName.toLowerCase()+(x.className&&typeof x.className==="string"?"."+x.className.trim().replaceAll(/\\s+/g,"."):""),matches:selectors.filter(s=>x.matches(s)),text:(x.innerText||x.getAttribute("aria-label")||"").trim().replaceAll(/\\s+/g," ").slice(0,90),width:r.width,height:r.height,meets44:r.width>=44&&r.height>=44,box:{left:r.left,right:r.right,top:r.top,bottom:r.bottom}}});const overlaps=[];for(let i=0;i<rows.length;i++)for(let j=i+1;j<rows.length;j++){const a=visible[i],b=visible[j];if(a.contains(b)||b.contains(a))continue;const A=rows[i].box,B=rows[j].box,area=Math.max(0,Math.min(A.right,B.right)-Math.max(A.left,B.left))*Math.max(0,Math.min(A.bottom,B.bottom)-Math.max(A.top,B.top));if(area>2)overlaps.push({a:rows[i].selector,b:rows[j].selector,area})}if(!wasOpen)nav?.classList.remove("is-open");return {targets:rows.map(({box,...row})=>row),overlaps}})()');
+        mobileTargetAudits.push({ language: lang, width, ...targets });
+        await page.evaluate('document.querySelectorAll("[data-story-step]")[0].click()');
+      }
 
       await page.evaluate('document.querySelector("#story").scrollIntoView({block:"start"})');
       const beforeScroll = Number(await page.evaluate('scrollY'));
@@ -296,6 +343,59 @@ try {
       const selectionResult = await page.evaluate('({y:scrollY,stage:document.querySelector("[data-story-panel]").dataset.activeStep,focus:document.activeElement===document.querySelectorAll("[data-story-step]")[0]})');
       assert(selectionResult.stage === '1' && selectionResult.focus && Math.abs(selectionResult.y-yBeforeSelection)<=1, 'S10 ' + lang + ' ' + width + ': manual selection does not trigger automatic page scrolling');
 
+      if (!isMobile) {
+        await page.evaluate('document.querySelector("#story").scrollIntoView({block:"start",behavior:"instant"})');
+        await new Promise(resolve => setTimeout(resolve, 100));
+        for (const index of [0, 1, 2]) {
+          const yBeforePointer = Number(await page.evaluate('scrollY'));
+          await pointerActivate(page, index);
+          const pointerResult = await page.evaluate(`(()=>({stage:document.querySelector("[data-story-panel]").dataset.activeStep,visible:document.querySelectorAll("[data-story-content]:not([hidden])").length,focus:document.activeElement===document.querySelectorAll("[data-story-step]")[${index}],scrollY,activeCount:document.querySelectorAll("[data-story-step][aria-current=step]").length}))()`);
+          await new Promise(resolve => setTimeout(resolve, 220));
+          const stable = await page.evaluate('document.querySelector("[data-story-panel]").dataset.activeStep');
+          const expectedStage = String(index + 1);
+          const passed = pointerResult.stage === expectedStage && pointerResult.visible === 1 && pointerResult.focus && pointerResult.activeCount === 1 && Math.abs(pointerResult.scrollY - yBeforePointer) <= 2 && stable === expectedStage;
+          pointerInteractionResults.push({ language: lang, width, stage: expectedStage, yBefore: yBeforePointer, result: pointerResult, stableStage: stable, passed });
+          assert(passed, 'R4-Pointer ' + lang + ' ' + width + ': CDP mouse activates Stage ' + expectedStage + ', its panel, predictable focus and scroll position');
+        }
+      } else {
+        await page.evaluate('document.querySelector("#story").scrollIntoView({block:"start",behavior:"instant"})');
+        await new Promise(resolve => setTimeout(resolve, 100));
+        for (const index of [0, 1, 2]) {
+          await touchTap(page, `[data-story-step]:nth-of-type(${index + 1})`);
+          const touchResult = await page.evaluate(`(()=>({stage:document.querySelector("[data-story-panel]").dataset.activeStep,visible:document.querySelectorAll("[data-story-content]:not([hidden])").length,activeCount:document.querySelectorAll("[data-story-step][aria-current=step]").length}))()`);
+          const passed = touchResult.stage === String(index + 1) && touchResult.visible === 1 && touchResult.activeCount === 1;
+          mobileTouchResults.push({ language: lang, action: 'stage-selection', stage: index + 1, passed, result: touchResult });
+          assert(passed, 'R4-Touch ' + lang + ': actual CDP touch activates Story Stage ' + (index + 1) + ' and matching panel');
+        }
+        await touchTap(page, '[data-story-step]:nth-of-type(2)');
+        await page.evaluate('document.querySelector("[data-story-content=\\"1\\"] details summary").scrollIntoView({block:"center",behavior:"instant"})');
+        await new Promise(resolve => setTimeout(resolve, 100));
+        await page.evaluate('document.querySelector("[data-story-content=\\"1\\"] details").open=false;window.__r4DisclosureClicks=0;document.querySelector("[data-story-content=\\"1\\"] details summary").addEventListener("click",()=>window.__r4DisclosureClicks++)');
+        const disclosureTapOne = await touchTap(page, '[data-story-content="1"] details summary');
+        const disclosureOpened = await page.evaluate('document.querySelector("[data-story-content=\\"1\\"] details").open');
+        const disclosureClicksAfterOne = await page.evaluate('window.__r4DisclosureClicks');
+        const disclosureTapTwo = await touchTap(page, '[data-story-content="1"] details summary');
+        const disclosureClosed = await page.evaluate('!document.querySelector("[data-story-content=\\"1\\"] details").open');
+        const disclosureClicksAfterTwo = await page.evaluate('window.__r4DisclosureClicks');
+        mobileTouchResults.push({ language: lang, action: 'disclosure-open-close', opened: disclosureOpened, closed: disclosureClosed, clicksAfterOne: disclosureClicksAfterOne, clicksAfterTwo: disclosureClicksAfterTwo, tapOne: disclosureTapOne, tapTwo: disclosureTapTwo, passed: disclosureOpened && disclosureClosed });
+        assert(disclosureOpened && disclosureClosed, 'R4-Touch ' + lang + ': CDP touch opens and closes the active Stage 02 Disclosure');
+        await touchTap(page, '[data-story-content="1"] details summary');
+        await page.evaluate('document.querySelector(".story-steps").scrollIntoView({block:"center",behavior:"instant"})');
+        await new Promise(resolve => setTimeout(resolve, 100));
+        await touchTap(page, '[data-story-step]:nth-of-type(3)');
+        await touchTap(page, '[data-story-step]:nth-of-type(2)');
+        const touchDisclosurePreserved = await page.evaluate('document.querySelector("[data-story-content=\\"1\\"] details").open');
+        assert(touchDisclosurePreserved, 'R4-Touch ' + lang + ': touch stage switching preserves open Disclosure state');
+        await page.evaluate('document.querySelector("#story").scrollIntoView({block:"start"})');
+        const beforeFling = await page.evaluate('({y:scrollY,stage:document.querySelector("[data-story-panel]").dataset.activeStep,open:document.querySelector("[data-story-content=\\"1\\"] details").open})');
+        const duringFling = await touchFling(page, width, height);
+        const afterFling = await page.evaluate('({y:scrollY,stage:document.querySelector("[data-story-panel]").dataset.activeStep,open:document.querySelector("[data-story-content=\\"1\\"] details").open})');
+        const deltaY = afterFling.y - beforeFling.y;
+        const flingPassed = Math.abs(deltaY) >= 40 && duringFling.every(x => x.stage === beforeFling.stage) && afterFling.stage === beforeFling.stage && afterFling.open;
+        inertialScrollResults.push({ language: lang, before: beforeFling, samples: duringFling, after: afterFling, deltaY, passed: flingPassed });
+        assert(flingPassed, 'R4-Inertia ' + lang + ': touch scroll/fling moves the page while Story stage and Disclosure remain unchanged during and after settling');
+      }
+
       if (width > 1000) {
         assert(initial.navLeft < initial.panelLeft && Math.abs(initial.navTop-initial.panelTop)<2 && initial.panelColumns.split(" ").length >= 2, 'S11 ' + lang + ': Desktop keeps selector and detail panel side by side on a shared top baseline');
       } else if (width > 430) {
@@ -304,9 +404,29 @@ try {
         assert(initial.navTop < initial.panelTop && initial.stageColumns === 1 && initial.buttons.every(x=>x.width>=44&&x.height>=44), 'S13 ' + lang + ': Mobile stacks stage controls and preserves 44px minimum touch targets');
       }
 
+      if (isMobile) {
+        const targetSummary = mobileTargetAudits.at(-1);
+        const requiredSelectors = ['.menu-toggle', '.language-switch', '.preview-groups summary', '.story-stop', '.hero-actions .button', '.site-nav a', '.footer-links a', '.brand', '.text-link'];
+        for (const selector of requiredSelectors) {
+          const hits = targetSummary.targets.filter(item => item.matches.includes(selector));
+          const matching = hits.filter(item => item.meets44);
+          assert(hits.length > 0 && matching.length === hits.length, 'R4-Target ' + lang + ': ' + selector + ' has a visible 44×44px or larger mobile hit area');
+        }
+        assert(targetSummary.overlaps.length === 0, 'R4-Target ' + lang + ': visible mobile Home controls do not overlap (' + JSON.stringify(targetSummary.overlaps) + ')');
+      }
+      await page.evaluate('document.querySelectorAll("[data-story-step]")[0].click();window.scrollTo(0,0)');
+      await new Promise(resolve => setTimeout(resolve, 120));
+      const viewportShot = await page.call('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false, fromSurface: true });
+      await writeFile(path.join(r4Evidence, `home-${lang}-${width}x${height}-viewport.png`), Buffer.from(viewportShot.data, 'base64'));
       const storyShot = await page.call('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false, fromSurface: true });
       await writeFile(path.join(shots, 'ux01-home-story-' + lang + '-' + width + '.png'), Buffer.from(storyShot.data, 'base64'));
       await captureEvidence(page, 'home-story-' + lang + '-' + width + '.jpg');
+      if (width === 1440 || width === 1363 || width === 768 || width === 390) {
+        const fullPage = await page.call('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true, fromSurface: true });
+        const visualName = `home-${lang}-${width}x${height}.png`;
+        await writeFile(path.join(r4Evidence, visualName), Buffer.from(fullPage.data, 'base64'));
+        visualScreenshots.push({ language: lang, width, height, path: path.join(r4Evidence, visualName) });
+      }
       storyViewports.push({ language: lang, width, height, status: 'passed' });
       activeStoryViewport = null;
     }
@@ -582,6 +702,23 @@ try {
     }
   }
 
+  for (const lang of ['en', 'zh']) {
+    const names = [1440, 1363, 768, 390].map(width => `home-${lang}-${width}x${width === 1363 ? 936 : width === 768 ? 1024 : width === 390 ? 844 : 1000}-viewport.png`);
+    const cards = names.map((name, index) => `<figure><figcaption>${[1440,1363,768,390][index]} × ${[1000,936,1024,844][index]}</figcaption><img src="${name}" alt=""></figure>`).join('');
+    const html = `<!doctype html><meta charset="utf-8"><title>UX01 PR11 R4 ${lang} overview</title><style>*{box-sizing:border-box}body{margin:0;padding:24px;background:#e9e7e1;color:#243144;font:700 20px system-ui}h1{margin:0 0 20px;font-size:24px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}figure{margin:0;padding:10px;background:#fff;border-radius:8px}figcaption{padding:6px 0 10px;font-size:15px}img{display:block;width:100%;height:auto;border:1px solid #ddd}</style><h1>Delivery System Home · ${lang === 'en' ? 'English' : '中文'} · viewport overview</h1><main class="grid">${cards}</main>`;
+    const sheetHtml = path.join(r4Evidence, `contact-${lang}.html`);
+    await writeFile(sheetHtml, html);
+    await page.call('Emulation.setDeviceMetricsOverride', { width: 1600, height: 1200, deviceScaleFactor: 1, mobile: false });
+    await page.call('Page.navigate', { url: pathToFileURL(sheetHtml).href });
+    await new Promise(resolve => setTimeout(resolve, 350));
+    await page.evaluate('Promise.all([...document.images].map(img=>img.decode()))');
+    const sheet = await page.call('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true, fromSurface: true });
+    const sheetPath = path.join(r4Evidence, `contact-${lang}.png`);
+    await writeFile(sheetPath, Buffer.from(sheet.data, 'base64'));
+    visualScreenshots.push({ language: lang, type: 'contact-sheet', path: sheetPath });
+    await rm(sheetHtml, { force: true });
+  }
+
   assert(page.runtimeErrors.length === 0, 'No JavaScript runtime exceptions (' + page.runtimeErrors.join('; ') + ')');
   assert(page.consoleErrors.length === 0, 'No browser Console errors (' + page.consoleErrors.join('; ') + ')');
 
@@ -599,10 +736,10 @@ try {
 
   assert(page.failedRequests.length === 0, 'No failed browser network requests (' + JSON.stringify(page.failedRequests) + ')');
 
-  const browserReport = { viewportChecks: reports.length, storyViewports, totalChecks: checks.length, viewports: reports, checks, externalLinks: externalResults, failedRequests: page.failedRequests, runtimeErrors: page.runtimeErrors, consoleErrors: page.consoleErrors };
+  const browserReport = { viewportChecks: reports.length, storyViewports, totalChecks: checks.length, viewports: reports, checks, pointerInteractionResults, mobileTouchResults, inertialScrollResults, mobileTargetAudits, visualScreenshots, externalLinks: externalResults, failedRequests: page.failedRequests, runtimeErrors: page.runtimeErrors, consoleErrors: page.consoleErrors };
   await writeFile(path.join(shots, 'browser-report.json'), JSON.stringify(browserReport, null, 2));
   await writeFile(path.join(durableEvidence, 'browser-report.json'), JSON.stringify(browserReport, null, 2));
-  console.log(JSON.stringify({ screenshots: shots, viewportChecks: reports.length, storyViewports, totalChecks: checks.length, failedRequests: page.failedRequests, runtimeErrors: page.runtimeErrors, consoleErrors: page.consoleErrors, externalLinks: externalResults }, null, 2));
+  console.log(JSON.stringify({ screenshots: shots, r4Evidence, viewportChecks: reports.length, storyViewports, totalChecks: checks.length, pointerInteractionResults, mobileTouchResults, inertialScrollResults, mobileTargetAudits, visualScreenshots, failedRequests: page.failedRequests, runtimeErrors: page.runtimeErrors, consoleErrors: page.consoleErrors, externalLinks: externalResults }, null, 2));
 } catch (error) {
   const failureReport = {
     viewportChecks: reports.length,
@@ -614,6 +751,11 @@ try {
     failedRequests: page?.failedRequests || [],
     runtimeErrors: page?.runtimeErrors || [],
     consoleErrors: page?.consoleErrors || [],
+    pointerInteractionResults,
+    mobileTouchResults,
+    inertialScrollResults,
+    mobileTargetAudits,
+    visualScreenshots,
     failure: { name: error.name, message: error.message, stack: error.stack }
   };
   await mkdir(shots, { recursive: true });

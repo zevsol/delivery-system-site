@@ -180,9 +180,11 @@
   .page-home {--home-gutter:16px}
   .page-home .nav-wrap {width:calc(100% - 32px);height:60px;gap:10px}
   .page-home .brand {font-size:16px}
-  .page-home .menu-toggle {width:40px;height:38px;border-radius:7px}
+  .page-home .brand {min-height:44px}
+  .page-home .language-switch {display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px}
+  .page-home .menu-toggle {width:44px;height:44px;flex:none;border-radius:7px}
   .page-home .site-nav {top:60px;padding:12px 16px 16px;background:#fbfaf7;border-bottom-color:#e5e1d8;box-shadow:0 12px 22px rgba(32,43,58,.08)}
-  .page-home .site-nav a {padding:12px 4px;border-bottom-color:#ece8e0}
+  .page-home .site-nav a {display:flex;align-items:center;min-height:44px;padding:12px 4px;border-bottom-color:#ece8e0}
   .page-home .hero-section {padding:46px 0 22px}
   .page-home .hero-inner,.page-home .hero-bottom {width:calc(100% - 32px)}
   .page-home .hero-inner {gap:25px}
@@ -209,6 +211,9 @@
   .page-home .story-index {width:32px;height:32px}
   .page-home .story-title {font-size:15px}
   .page-home .story-description {font-size:11px;line-height:1.58}
+  .page-home .preview-groups summary {min-height:44px}
+  .page-home .text-link,.page-home .footer-links a {display:inline-flex;align-items:center;min-width:44px;min-height:44px}
+  .page-home .footer-links a {flex:0 0 auto}
   .page-home .step-status {display:inline-block;margin-top:1px}
   .page-home .product-panel {padding:15px}
   .page-home .product-panel h3 {font-size:21px}
