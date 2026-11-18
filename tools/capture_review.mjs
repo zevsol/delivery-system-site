@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
-import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -13,6 +13,11 @@ const routes = ['/','/demo/','/docs/','/architecture/','/zh/','/zh/demo/','/zh/d
 const checks = [];
 const externalLinks = new Set();
 let server, browser;
+let profile, page;
+const reports = [];
+const storyViewports = [];
+const externalResults = [];
+let activeStoryViewport = null;
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -44,6 +49,8 @@ async function makePage(port, targetId) {
   const runtimeErrors = [];
   const consoleErrors = [];
   const networkRequests = [];
+  const failedRequests = [];
+  const requestUrls = new Map();
   const beaconRequests = [];
   let call;
   socket.addEventListener('message', event => {
@@ -51,7 +58,13 @@ async function makePage(port, targetId) {
     if (data.method === 'Runtime.exceptionThrown') runtimeErrors.push(data.params.exceptionDetails.text || 'Runtime exception');
     if (data.method === 'Runtime.consoleAPICalled' && data.params.type === 'error') consoleErrors.push(data.params.args.map(arg => arg.value || arg.description || '').join(' '));
     if (data.method === 'Log.entryAdded' && data.params.entry.level === 'error') consoleErrors.push(data.params.entry.text);
-    if (data.method === 'Network.requestWillBeSent') networkRequests.push(data.params.request.url);
+    if (data.method === 'Network.requestWillBeSent') {
+      networkRequests.push(data.params.request.url);
+      requestUrls.set(data.params.requestId, data.params.request.url);
+    }
+    if (data.method === 'Network.loadingFailed') {
+      failedRequests.push({ url: requestUrls.get(data.params.requestId) || 'unknown request', errorText: data.params.errorText, canceled: data.params.canceled || false, blockedReason: data.params.blockedReason || null });
+    }
     if (data.method === 'Fetch.requestPaused') {
       beaconRequests.push(data.params.request.url);
       call('Fetch.fulfillRequest', { requestId: data.params.requestId, responseCode: 200, responseHeaders: [{ name: 'Content-Type', value: 'application/javascript' }, { name: 'Access-Control-Allow-Origin', value: '*' }, { name: 'Content-Length', value: '0' }], body: '' }).catch(() => {});
@@ -67,12 +80,45 @@ async function makePage(port, targetId) {
     pending.set(id, { resolve, reject });
     socket.send(JSON.stringify({ id, method, params }));
   });
-  const evaluate = async expression => {
+  const evaluate = async (expression, label) => {
+    const callSite = label || new Error().stack?.split('\n')[2]?.trim() || 'unknown call site';
+    try {
+      new Function(expression);
+    } catch (cause) {
+      const error = new Error(`Browser expression syntax error before CDP execution at ${callSite}: ${cause.message}`, { cause });
+      error.code = 'BROWSER_EXPRESSION_SYNTAX';
+      throw error;
+    }
     const result = await call('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true });
     if (result.exceptionDetails) throw new Error(result.exceptionDetails.exception?.description || result.exceptionDetails.text);
     return result.result.value;
   };
-  return { call, evaluate, socket, runtimeErrors, consoleErrors, networkRequests, beaconRequests };
+  return { call, evaluate, socket, runtimeErrors, consoleErrors, networkRequests, failedRequests, beaconRequests };
+}
+async function stopChild(child) {
+  if (!child || child.exitCode !== null || child.signalCode !== null) return;
+  await new Promise(resolve => {
+    let settled = false;
+    let timer;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve();
+    };
+    child.once('exit', finish);
+    child.once('error', finish);
+    timer = setTimeout(() => {
+      try { child.kill(); } catch {}
+      finish();
+    }, 3000);
+    try {
+      if (!child.kill()) finish();
+    } catch {
+      finish();
+    }
+    if (child.exitCode !== null || child.signalCode !== null) finish();
+  });
 }
 async function key(page, keyName, code, vk) {
   const event = { type: 'keyDown', key: keyName, code, windowsVirtualKeyCode: vk };
@@ -100,7 +146,10 @@ async function navigate(page, url) {
   await page.call('Page.navigate', { url });
   const targetPath = new URL(url).pathname;
   for (let i = 0; i < 80; i++) {
-    const ready = await page.evaluate('document.readyState === "complete" && location.pathname === ' + JSON.stringify(targetPath)).catch(() => false);
+    const ready = await page.evaluate('document.readyState === "complete" && location.pathname === ' + JSON.stringify(targetPath)).catch(error => {
+      if (error.code === 'BROWSER_EXPRESSION_SYNTAX') throw error;
+      return false;
+    });
     if (ready) break;
     await new Promise(resolve => setTimeout(resolve, 100));
   }
@@ -138,13 +187,13 @@ try {
   assert((await readFile(path.join(root, 'CNAME'), 'utf8')).trim() === 'ds.zevsol.com', 'Custom domain CNAME remains ds.zevsol.com');
 
   const debugPort = await freePort();
-  const profile = await mkdtemp(path.join(os.tmpdir(), 'delivery-site-chrome-'));
+  profile = await mkdtemp(path.join(os.tmpdir(), 'delivery-site-chrome-'));
   browser = spawn(chromePath, ['--headless=new', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage', '--no-proxy-server', '--host-resolver-rules=MAP ds.zevsol.com 127.0.0.1,MAP zevsol.github.io 127.0.0.1,MAP zevsol.com 127.0.0.1', '--remote-debugging-port=' + debugPort, '--user-data-dir=' + profile, 'about:blank'], { stdio: 'ignore' });
   await waitFor('http://127.0.0.1:' + debugPort + '/json/version');
   const targets = await (await fetch('http://127.0.0.1:' + debugPort + '/json/list')).json();
   const target = targets.find(item => item.type === 'page');
   if (!target) throw new Error('Chrome did not create a page target');
-  const page = await makePage(debugPort, target.id);
+  page = await makePage(debugPort, target.id);
   await page.call('Page.enable');
   await page.call('Runtime.enable');
   await page.call('Log.enable');
@@ -153,7 +202,6 @@ try {
   await page.call('Browser.grantPermissions', { origin: 'http://127.0.0.1:' + serverPort, permissions: ['clipboardReadWrite', 'clipboardSanitizedWrite'] }).catch(() => {});
 
   const sizes = [[1440,1000],[768,1024],[390,844]];
-  const reports = [];
   for (const route of routes) {
     for (const [width,height] of sizes) {
       let name = 'viewport-' + route.replaceAll('/','_') + width + '.png';
@@ -191,11 +239,16 @@ try {
     }
 
     for (const [width, height, isMobile] of [[1440,1000,false],[1363,936,false],[768,1024,false],[390,844,true]]) {
+      activeStoryViewport = { language: lang, route, width, height, status: 'running' };
       await page.call('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: isMobile });
-      await page.call('Emulation.setTouchEmulationEnabled', { enabled: isMobile, maxTouchPoints: isMobile ? 1 : 0 });
+      if (isMobile) {
+        await page.call('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
+      } else {
+        await page.call('Emulation.setTouchEmulationEnabled', { enabled: false });
+      }
       await navigate(page, 'http://127.0.0.1:' + serverPort + route);
 
-      const initial = await page.evaluate('(()=>{const p=document.querySelector("[data-story-panel]"),buttons=[...document.querySelectorAll("[data-story-step]")],nav=document.querySelector(".story-steps"),panel=p.getBoundingClientRect(),navRect=nav.getBoundingClientRect(),style=getComputedStyle(p);return {stage:p.dataset.activeStep,mode:p.dataset.interactionMode,eligible:p.dataset.autoEligible,current:buttons.filter(x=>x.getAttribute("aria-current")==="step").length,buttons:buttons.map(x=>({controls:x.getAttribute("aria-controls"),target:!!document.getElementById(x.getAttribute("aria-controls")),width:x.getBoundingClientRect().width,height:x.getBoundingClientRect().height})),position:style.position,overflowY:style.overflowY,maxHeight:style.maxHeight,scrollHeight:p.scrollHeight,clientHeight:p.clientHeight,navLeft:navRect.left,navRight:navRect.right,navTop:navRect.top,panelLeft:panel.left,panelTop:panel.top,panelColumns:getComputedStyle(document.querySelector(".story-layout")).gridTemplateColumns,stageColumns:getComputedStyle(nav).gridTemplateColumns.split(" ").length}}})()');
+      const initial = await page.evaluate('(()=>{const p=document.querySelector("[data-story-panel]"),buttons=[...document.querySelectorAll("[data-story-step]")],nav=document.querySelector(".story-steps"),panel=p.getBoundingClientRect(),navRect=nav.getBoundingClientRect(),style=getComputedStyle(p);return {stage:p.dataset.activeStep,mode:p.dataset.interactionMode,eligible:p.dataset.autoEligible,current:buttons.filter(x=>x.getAttribute("aria-current")==="step").length,buttons:buttons.map(x=>({controls:x.getAttribute("aria-controls"),target:!!document.getElementById(x.getAttribute("aria-controls")),width:x.getBoundingClientRect().width,height:x.getBoundingClientRect().height})),position:style.position,overflowY:style.overflowY,maxHeight:style.maxHeight,scrollHeight:p.scrollHeight,clientHeight:p.clientHeight,navLeft:navRect.left,navRight:navRect.right,navTop:navRect.top,panelLeft:panel.left,panelTop:panel.top,panelColumns:getComputedStyle(document.querySelector(".story-layout")).gridTemplateColumns,stageColumns:getComputedStyle(nav).gridTemplateColumns.split(" ").length}})()');
       assert(initial.stage === '1' && initial.mode === 'manual' && initial.eligible === 'false', 'S01 ' + lang + ' ' + width + ': Story starts deterministically in Manual-first Stage 01');
       assert(initial.current === 1 && initial.buttons.length === 3 && initial.buttons.every(x=>x.target), 'S02 ' + lang + ' ' + width + ': three semantic stage controls have valid aria-controls and exactly one active step');
       assert(initial.position === 'static' && initial.overflowY === 'visible' && initial.maxHeight === 'none' && initial.scrollHeight <= initial.clientHeight + 1, 'S03 ' + lang + ' ' + width + ': Story detail panel follows natural document flow without sticky or nested scrolling');
@@ -254,6 +307,8 @@ try {
       const storyShot = await page.call('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false, fromSurface: true });
       await writeFile(path.join(shots, 'ux01-home-story-' + lang + '-' + width + '.png'), Buffer.from(storyShot.data, 'base64'));
       await captureEvidence(page, 'home-story-' + lang + '-' + width + '.jpg');
+      storyViewports.push({ language: lang, width, height, status: 'passed' });
+      activeStoryViewport = null;
     }
   }
 
@@ -530,7 +585,6 @@ try {
   assert(page.runtimeErrors.length === 0, 'No JavaScript runtime exceptions (' + page.runtimeErrors.join('; ') + ')');
   assert(page.consoleErrors.length === 0, 'No browser Console errors (' + page.consoleErrors.join('; ') + ')');
 
-  const externalResults = [];
   for (const href of externalLinks) {
     try {
       const response = await fetch(href, { method: 'HEAD', redirect: 'follow', signal: AbortSignal.timeout(6000) });
@@ -543,12 +597,32 @@ try {
     }
   }
 
-  const browserReport = { viewportChecks: reports.length, totalChecks: checks.length, viewports: reports, checks, externalLinks: externalResults, runtimeErrors: page.runtimeErrors, consoleErrors: page.consoleErrors };
+  assert(page.failedRequests.length === 0, 'No failed browser network requests (' + JSON.stringify(page.failedRequests) + ')');
+
+  const browserReport = { viewportChecks: reports.length, storyViewports, totalChecks: checks.length, viewports: reports, checks, externalLinks: externalResults, failedRequests: page.failedRequests, runtimeErrors: page.runtimeErrors, consoleErrors: page.consoleErrors };
   await writeFile(path.join(shots, 'browser-report.json'), JSON.stringify(browserReport, null, 2));
   await writeFile(path.join(durableEvidence, 'browser-report.json'), JSON.stringify(browserReport, null, 2));
-  console.log(JSON.stringify({ screenshots: shots, viewportChecks: reports.length, totalChecks: checks.length, runtimeErrors: page.runtimeErrors, consoleErrors: page.consoleErrors, externalLinks: externalResults }, null, 2));
-  page.socket.close();
+  console.log(JSON.stringify({ screenshots: shots, viewportChecks: reports.length, storyViewports, totalChecks: checks.length, failedRequests: page.failedRequests, runtimeErrors: page.runtimeErrors, consoleErrors: page.consoleErrors, externalLinks: externalResults }, null, 2));
+} catch (error) {
+  const failureReport = {
+    viewportChecks: reports.length,
+    storyViewports,
+    activeStoryViewport,
+    totalChecks: checks.length,
+    checks,
+    externalLinks: externalResults,
+    failedRequests: page?.failedRequests || [],
+    runtimeErrors: page?.runtimeErrors || [],
+    consoleErrors: page?.consoleErrors || [],
+    failure: { name: error.name, message: error.message, stack: error.stack }
+  };
+  await mkdir(shots, { recursive: true });
+  await writeFile(path.join(shots, 'browser-report.json'), JSON.stringify(failureReport, null, 2));
+  await writeFile(path.join(durableEvidence, 'browser-report.json'), JSON.stringify(failureReport, null, 2));
+  throw error;
 } finally {
-  if (server) server.kill();
-  if (browser) browser.kill();
+  if (page?.socket.readyState === WebSocket.OPEN) page.socket.close();
+  await stopChild(server);
+  await stopChild(browser);
+  if (profile) await rm(profile, { recursive: true, force: true });
 }
