@@ -16,13 +16,13 @@ COPY = {
 "descriptions": ["Turn a development idea into a structured, reviewable GitHub Issue draft with Delivery System Lite.", "Explore an actual local MCP test result with its Preview receipt and Markdown draft. Static sample only; no live AI or GitHub writes.", "A concise setup path for the current Delivery System source and local stdio MCP preview workflow.", "See the preview-first workflow and the current verification boundary for Delivery System Lite and GitHub Apply."],
 "navaria": "Main navigation", "skip": "Skip to content", "hero": ["A CLEARER PATH FROM IDEA TO ACTION", "Turn intent into<br><em>reviewable work.</em>", "Delivery System Lite turns a development request into a structured Work Item. Follow one recorded case through its Preview and Markdown draft."],
 "hero_note": "Recorded local MCP result · no live AI · no GitHub writes", "demo_cta": "Explore the recorded case", "docs_cta": "How it works",
-"story": ["ONE REAL DS LITE CASE", "A request gains shape<br>at every step.", "Follow the same portfolio request through three stages: human intent, a sealed conceptual Preview, and its Issue Markdown presentation."],
+"story": ["ONE REAL DS LITE CASE", "A request gains shape at every step.", "Follow the same portfolio request through three stages: human intent, a sealed conceptual Preview, and its Issue Markdown presentation."],
 "step_names": ["Intent", "Sealed Preview", "GitHub Issue Markdown"],
 "step_copy": ["A developer asks for a responsive portfolio with an introduction, projects, contact details, and keyboard access—and names what stays out of scope.", "The local planning flow returns one conceptual work item with explicit scope, non-goals, acceptance criteria, and verification. No repository was claimed.", "The recorded work item is presented as a Markdown draft to review, copy, or download. This step does not create an Issue."],
 "panel_title": ["A clear request", "One reviewable outcome", "A draft you control"], "panel_desc": ["Start with the outcome and boundaries, in the developer’s own words.", "The recorded Preview organizes the request into one conceptual work item.", "Markdown presents the recorded payload; it does not write remotely."],
 "intent_label": "REQUEST SUMMARY · NOT VERBATIM", "intent": "Build a responsive developer portfolio with an introduction, project showcase, and contact links. Support desktop, mobile, and keyboard use. No login, payments, or admin panel.",
 "scope_label": "MADE EXPLICIT", "scope": ["Outcome and scope", "Non-goals", "Five checkable acceptance criteria", "Verification steps"], "case_progress": "CASE PROGRESS", "story_label": "INTERACTIVE WALKTHROUGH", "view_stage": "View this stage",
-"trust": ["BUILT AROUND REVIEW", "Clarity before<br>commitment.", "The Lite prototype demonstrates a local planning Preview. A recorded output is evidence, not a hosted live service or an accepted remote write path."],
+"trust": ["BUILT AROUND REVIEW", "Clarity before commitment.", "The Lite prototype demonstrates a local planning Preview. A recorded output is evidence, not a hosted live service or an accepted remote write path."],
 "trust_cards": [["01", "Preview first", "Inspect a structured result before deciding what to do next."], ["02", "Human stays in control", "Copy or download the draft yourself. Nothing is submitted for you."], ["03", "Evidence stays scoped", "See what one environment verified—and what remains unaccepted."]],
 "closing": "See the draft this Preview produced.", "closing_cta": "Review the complete Markdown", "disclaimer": "Recorded result · 1 work item · 0 GitHub writes",
 "capabilities": ["WHAT LITE DOES", "From request to reviewable work.", "This recorded case demonstrates one request becoming one structured item.", "CAN DO", ["Structure a request as a Work Item", "Return a Preview to inspect", "Make scope, non-goals, criteria, and checks visible", "Present a copyable GitHub Issue Markdown draft"], "NOT CLAIMED", ["Live AI generation on this website", "Verified decomposition for every request type", "Automatic GitHub Issue creation", "Accepted full GitHub Apply or a stable release"]],
@@ -42,15 +42,15 @@ COPY = {
 "nav": ["产品", "记录演示", "文档", "架构"], "switch": "English", "switch_label": "Switch language to English",
 "pages": ["首页", "记录演示", "文档", "架构与状态"],
 "descriptions": ["Delivery System Lite 将开发想法整理成结构化、可审查的 GitHub Issue 草稿。", "查看一次真实的本地 MCP 测试结果、预览回执和 Markdown 草稿。静态展示，不调用实时 AI 或写入 GitHub。", "根据当前 Delivery System 源码配置本地 stdio MCP 预览流程的简明指南。", "了解预览优先的工作流，以及 Delivery System Lite 和 GitHub Apply 当前的验证边界。"],
-"navaria": "主导航", "skip": "跳转到正文", "hero": ["从开发需求到清晰交付", "把开发需求<br><em>整理成可审阅的<br>工作项。</em>", "Delivery System Lite 将开发需求整理成结构化工作项。通过一条真实记录，查看对应预览和 Markdown 草稿。"],
+"navaria": "主导航", "skip": "跳转到正文", "hero": ["从开发需求到清晰交付", "把开发需求<br><em>整理成可审阅的<span class=\"hero-work-item\">工作项</span>。</em>", "Delivery System Lite 将开发需求整理成结构化工作项。通过一条真实记录，查看对应预览和 Markdown 草稿。"],
 "hero_note": "本地 MCP 历史结果 · 不调用实时 AI · 不写入 GitHub", "demo_cta": "查看真实记录案例", "docs_cta": "了解工作方式",
-"story": ["一个真实的 DS LITE 案例", "需求在每一步<br>变得更清晰。", "同一个作品集需求，依次经过三个阶段：人的意图、封存的概念预览，以及展示为 Issue Markdown 的草稿。"],
+"story": ["一个真实的 DS LITE 案例", "需求在每一步变得更清晰。", "同一个作品集需求，依次经过三个阶段：人的意图、封存的概念预览，以及展示为 Issue Markdown 的草稿。"],
 "step_names": ["需求意图", "封存预览", "GitHub Issue Markdown"],
 "step_copy": ["开发者希望制作一个响应式作品集，包含个人介绍、项目、联系方式和键盘访问能力，同时明确排除哪些范围。", "本地规划流程返回一个概念级工作项，明确列出范围、非目标、验收标准和验证步骤。没有声明目标仓库。", "记录中的工作项被呈现为 Markdown 草稿，供人审阅、复制或下载。此步骤不会创建 Issue。"],
 "panel_title": ["清晰的需求", "一个可审查的结果", "由你掌控的草稿"], "panel_desc": ["用开发者自己的语言描述目标和边界。", "记录中的预览把需求整理成一个概念级工作项。", "Markdown 是对记录内容的展示，不会写入远端。"],
 "intent_label": "需求摘要 · 非逐字原文", "intent": "制作一个响应式开发者作品集，包含个人介绍、项目展示和联系链接。支持桌面、手机和键盘操作。不需要登录、支付或管理后台。",
 "scope_label": "预览明确整理的内容", "scope": ["目标与范围", "非目标", "五项可检查的验收标准", "验证步骤"], "case_progress": "案例进度", "story_label": "交互式过程演示", "view_stage": "查看此阶段",
-"trust": ["围绕审阅而设计", "先看清楚，<br>再做决定。", "Lite 原型展示的是本地规划预览。历史结果可以作为证据，但它不是在线托管服务，也不代表远端写入流程已验收。"],
+"trust": ["围绕审阅而设计", "先看清楚，再做决定。", "Lite 原型展示的是本地规划预览。历史结果可以作为证据，但它不是在线托管服务，也不代表远端写入流程已验收。"],
 "trust_cards": [["01", "预览优先", "先检查结构化结果，再决定下一步。"], ["02", "由人掌控", "自行复制或下载草稿，不会替你提交。"], ["03", "证据有边界", "清楚展示单一环境验证了什么、还有什么未验收。"]],
 "closing": "看看预览整理出的草稿。", "closing_cta": "查看完整 Markdown", "disclaimer": "历史记录 · 1 个工作项 · 0 次 GitHub 写入",
 "capabilities": ["DS LITE 能做什么", "从需求到可审阅的工作项。", "这条真实记录展示一个需求如何整理成一个结构化工作项。", "可以做到", ["把需求整理成 Work Item", "返回可检查的 Preview", "明确范围、非目标、验收条件和验证方式", "提供可复制的 GitHub Issue Markdown 草稿"], "当前未验证", ["本站实时调用 AI 生成结果", "适用于所有需求类型的拆分", "自动创建 GitHub Issue", "DS Full GitHub Apply 已通过集成验收或正式发布"]],
@@ -83,7 +83,9 @@ def pageshell(lang, page, prefix, t):
     title = esc(t["pages"][idx] + " — Delivery System")
     if page == "home": title = esc("Delivery System — " + ("intent into reviewable work" if lang == "en" else "从意图到可审查的工作"))
     brand = f'<a class="brand" href="{prefix}{"zh/" if lang == "zh" else ""}" aria-label="Delivery System"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 36 36"><path d="M8 11h13M8 18h20M8 25h11"/><circle cx="26" cy="25" r="3"/></svg></span><span>delivery<span class="brand-dot">.</span>system</span></a>'
-    return f'''<!doctype html><html lang="{lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#f6f8ff"><title>{title}</title><meta name="description" content="{esc(t['descriptions'][idx])}"><link rel="canonical" href="{url}"><link rel="alternate" hreflang="en" href="{en}"><link rel="alternate" hreflang="zh" href="{zh}"><link rel="alternate" hreflang="x-default" href="{en}"><meta property="og:type" content="website"><meta property="og:site_name" content="Delivery System"><meta property="og:title" content="{title}"><meta property="og:description" content="{esc(t['descriptions'][idx])}"><meta property="og:url" content="{url}"><meta property="og:image" content="https://ds.zevsol.com/assets/og-preview.png"><meta property="og:locale" content="{'zh_CN' if lang == 'zh' else 'en_US'}"><meta name="twitter:card" content="summary_large_image"><link rel="icon" type="image/svg+xml" href="{prefix}assets/favicon.svg"><link rel="stylesheet" href="{prefix}assets/style.css"><script defer src="{prefix}assets/site.js"></script></head><body class="lang-{lang} page-{page}"><a class="skip-link" href="#main">{esc(t['skip'])}</a><header class="site-header"><div class="nav-wrap">{brand}<button class="menu-toggle" type="button" aria-label="{'打开导航' if lang == 'zh' else 'Open navigation'}" aria-expanded="false" aria-controls="site-nav"><span></span><span></span><span></span></button><nav id="site-nav" class="site-nav" aria-label="{esc(t['navaria'])}">{nav}</nav><div class="header-actions"><a class="language-switch" href="{sw}" lang="{'en' if lang == 'zh' else 'zh'}" aria-label="{esc(t['switch_label'])}">{esc(t['switch'])}<span aria-hidden="true">↗</span></a><a class="github-link" href="{SOURCE}" target="_blank" rel="noopener noreferrer">GitHub ↗</a></div></div></header><main id="main">'''
+    theme_color = "#fbfaf7" if page == "home" else "#f6f8ff"
+    home_stylesheet = f'<link rel="stylesheet" href="{prefix}assets/home.css">' if page == "home" else ""
+    return f'''<!doctype html><html lang="{lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="{theme_color}"><title>{title}</title><meta name="description" content="{esc(t['descriptions'][idx])}"><link rel="canonical" href="{url}"><link rel="alternate" hreflang="en" href="{en}"><link rel="alternate" hreflang="zh" href="{zh}"><link rel="alternate" hreflang="x-default" href="{en}"><meta property="og:type" content="website"><meta property="og:site_name" content="Delivery System"><meta property="og:title" content="{title}"><meta property="og:description" content="{esc(t['descriptions'][idx])}"><meta property="og:url" content="{url}"><meta property="og:image" content="https://ds.zevsol.com/assets/og-preview.png"><meta property="og:locale" content="{'zh_CN' if lang == 'zh' else 'en_US'}"><meta name="twitter:card" content="summary_large_image"><link rel="icon" type="image/svg+xml" href="{prefix}assets/favicon.svg"><link rel="stylesheet" href="{prefix}assets/style.css">{home_stylesheet}<script defer src="{prefix}assets/site.js"></script></head><body class="lang-{lang} page-{page}"><a class="skip-link" href="#main">{esc(t['skip'])}</a><header class="site-header"><div class="nav-wrap">{brand}<button class="menu-toggle" type="button" aria-label="{'打开导航' if lang == 'zh' else 'Open navigation'}" aria-expanded="false" aria-controls="site-nav"><span></span><span></span><span></span></button><nav id="site-nav" class="site-nav" aria-label="{esc(t['navaria'])}">{nav}</nav><div class="header-actions"><a class="language-switch" href="{sw}" lang="{'en' if lang == 'zh' else 'zh'}" aria-label="{esc(t['switch_label'])}">{esc(t['switch'])}<span aria-hidden="true">↗</span></a><a class="github-link" href="{SOURCE}" target="_blank" rel="noopener noreferrer">GitHub ↗</a></div></div></header><main id="main">'''
 
 def footer(lang, prefix, t, page):
     zhprefix = "zh/" if lang == "zh" else ""
@@ -133,39 +135,189 @@ def home_page(lang, prefix, t):
     work_item_title, issue, markdown_excerpt, _ = recorded_issue(lang)
     excerpt = esc(markdown_excerpt)
     demo_href = prefix + ("zh/" if lang == "zh" else "") + "demo/"
+    is_en = lang == "en"
+
+    statuses = ["Request received", "Preview sealed", "Draft ready"] if is_en else ["收到需求", "预览已封存", "草稿已就绪"]
     buttons = []
     for i in range(3):
-        buttons.append(f'<button class="story-stop" type="button" data-story-step data-story-section="{i}" data-kicker="{esc(t['story_label'])}" data-title="{esc(t['panel_title'][i])}" data-description="{esc(t['panel_desc'][i])}" aria-current="{'step' if i == 0 else 'false'}"><span class="story-index" aria-hidden="true">0{i+1}</span><span class="story-copy"><span class="story-title">{esc(names[i])}</span><span class="story-description">{esc(copies[i])}</span><span class="step-status">{esc(["Request received", "Preview sealed", "Draft ready"][i] if lang == "en" else ["收到需求", "预览已封存", "草稿已就绪"][i])}</span></span><span class="step-activate">{esc(t['view_stage'])} <span aria-hidden="true">↗</span></span></button>')
-    tags = ["Responsive", "Keyboard-ready", "Static content"] if lang == "en" else ["响应式", "支持键盘访问", "静态内容"]
+        number = i + 1
+        button = (
+            '<button class="story-stop" id="story-step-{number}" type="button" '
+            'data-story-step data-story-section="{index}" data-kicker="{kicker}" '
+            'data-title="{title}" data-description="{description}" '
+            'aria-controls="story-stage-content-{number}" aria-current="{current}">'
+            '<span class="story-index" aria-hidden="true">0{number}</span>'
+            '<span class="story-copy"><span class="story-title">{name}</span>'
+            '<span class="story-description">{copy}</span>'
+            '<span class="step-status">{status}</span></span>'
+            '<span class="step-activate">{activate} <span aria-hidden="true">↗</span></span></button>'
+        ).format(
+            number=number,
+            index=i,
+            kicker=esc(t["story_label"]),
+            title=esc(t["panel_title"][i]),
+            description=esc(t["panel_desc"][i]),
+            current="step" if i == 0 else "false",
+            name=esc(names[i]),
+            copy=esc(copies[i]),
+            status=esc(statuses[i]),
+            activate=esc(t["view_stage"]),
+        )
+        buttons.append(button)
+
+    tags = ["Responsive", "Keyboard-ready", "Static content"] if is_en else ["响应式", "支持键盘访问", "静态内容"]
     tag_html = "".join(f"<span>{esc(tag)}</span>" for tag in tags)
-    panel = f'''<div class="intent-card"><span class="panel-overline">{esc(t["intent_label"])}</span><p>{esc(t["intent"])}</p><div class="tag-row">{tag_html}</div></div>'''
-    group_names = ["Scope", "Non-goals", "Acceptance Criteria", "Verification"] if lang == "en" else ["范围", "非目标", "验收条件", "验证说明"]
+    panel = (
+        f'<div class="intent-card"><span class="panel-overline">{esc(t["intent_label"])}</span>'
+        f'<p>{esc(t["intent"])}</p><div class="tag-row">{tag_html}</div></div>'
+    )
+
+    group_names = ["Scope", "Non-goals", "Acceptance Criteria", "Verification"] if is_en else ["范围", "非目标", "验收条件", "验证说明"]
     group_keys = ["Scope", "Non-goals", "Acceptance Criteria", "Verification"]
     preview_group_parts = []
     for label, key in zip(group_names, group_keys):
         group_items = "".join("<li>" + esc(item) + "</li>" for item in issue[key])
-        preview_group_parts.append(f'<details><summary><span>{esc(label)}</span><b>{len(issue[key])}</b></summary><ul>{group_items}</ul></details>')
+        preview_group_parts.append(
+            f'<details><summary><span>{esc(label)}</span><b>{len(issue[key])}</b></summary><ul>{group_items}</ul></details>'
+        )
     preview_groups = "".join(preview_group_parts)
-    record_label = "RECORDED WORK ITEM · 01" if lang == "en" else "真实记录中的工作项 · 01"
-    receipt = '<b>Conceptual</b><span>·</span><span>1 work item</span><span>·</span><span>0 writes</span>' if lang == "en" else '<b>Conceptual</b><span>·</span><span>1 个工作项</span><span>·</span><span>0 次写入</span>'
-    excerpt_label = "MARKDOWN EXCERPT · ACCEPTANCE CRITERIA" if lang == "en" else "Markdown 节选 · 原始中文验收条件；样本章节标题为英文"
-    full_demo = "Open the complete recorded Demo ↗" if lang == "en" else "查看完整记录演示 ↗"
-    draft_label = "ISSUE MARKDOWN · RECORDED EXCERPT" if lang == "en" else "Issue Markdown · 真实记录节选"
-    stage2 = f'''<article class="work-item-preview"><div class="work-item-heading"><span class="panel-overline">{record_label}</span><h4>{esc(work_item_title)}</h4></div><div class="preview-groups">{preview_groups}</div><div class="receipt-chip">{receipt}</div></article>'''
-    stage3 = f'''<article class="draft-card"><div class="draft-head"><span class="file-chip">MD</span><span>{draft_label}</span></div><small class="excerpt-label">{excerpt_label}</small><pre>{excerpt}</pre><a class="text-link" href="{demo_href}">{full_demo}</a></article>'''
-    stage_content = f'<div class="story-stage-content" data-story-content="0">{panel}</div><div class="story-stage-content" data-story-content="1" hidden>{stage2}</div><div class="story-stage-content" data-story-content="2" hidden>{stage3}</div>'
+
+    record_label = "RECORDED WORK ITEM · 01" if is_en else "真实记录中的工作项 · 01"
+    receipt = (
+        '<b>Conceptual</b><span>·</span><span>1 work item</span><span>·</span><span>0 writes</span>'
+        if is_en else
+        '<b>Conceptual</b><span>·</span><span>1 个工作项</span><span>·</span><span>0 次写入</span>'
+    )
+    excerpt_label = (
+        "MARKDOWN EXCERPT · ACCEPTANCE CRITERIA"
+        if is_en else
+        "Markdown 节选 · 原始中文验收条件；样本章节标题为英文"
+    )
+    full_demo = "Open the complete recorded Demo ↗" if is_en else "查看完整记录演示 ↗"
+    draft_label = "ISSUE MARKDOWN · RECORDED EXCERPT" if is_en else "Issue Markdown · 真实记录节选"
+
+    stage2 = (
+        f'<article class="work-item-preview"><div class="work-item-heading">'
+        f'<span class="panel-overline">{record_label}</span><h4>{esc(work_item_title)}</h4></div>'
+        f'<div class="preview-groups">{preview_groups}</div><div class="receipt-chip">{receipt}</div></article>'
+    )
+    stage3 = (
+        f'<article class="draft-card"><div class="draft-head"><span class="file-chip">MD</span>'
+        f'<span>{draft_label}</span></div><small class="excerpt-label">{excerpt_label}</small>'
+        f'<pre>{excerpt}</pre><a class="text-link" href="{demo_href}">{full_demo}</a></article>'
+    )
+    stage_content = "".join([
+        f'<div class="story-stage-content" id="story-stage-content-1" data-story-content="0" aria-labelledby="story-step-1">{panel}</div>',
+        f'<div class="story-stage-content" id="story-stage-content-2" data-story-content="1" aria-labelledby="story-step-2" hidden>{stage2}</div>',
+        f'<div class="story-stage-content" id="story-stage-content-3" data-story-content="2" aria-labelledby="story-step-3" hidden>{stage3}</div>',
+    ])
+
     capabilities = t["capabilities"]
     can_list = "".join(f'<li><span aria-hidden="true">✓</span>{esc(item)}</li>' for item in capabilities[4])
     cannot_list = "".join(f'<li><span aria-hidden="true">—</span>{esc(item)}</li>' for item in capabilities[6])
     handoff = t["handoff"]
-    handoff_card = f'''<div class="handoff-document"><div class="handoff-bar"><span class="file-chip">MD</span><span>{handoff[0]}</span><span class="handoff-dot"></span></div><strong>{esc(work_item_title)}</strong><small>{excerpt_label}</small><pre>{excerpt}</pre></div>'''
-    trustcards = "".join(f'<article class="trust-card"><span>{esc(n)}</span><h3>{esc(h)}</h3><p>{esc(d)}</p></article>' for n, h, d in t["trust_cards"])
-    part_1 = f'''<section class="hero-section"><div class="hero-grid-bg"></div><div class="hero-glow hero-glow-a"></div><div class="hero-glow hero-glow-b"></div><div class="hero-inner"><div class="hero-copy"><p class="eyebrow"><span class="eyebrow-mark"></span>{esc(t['hero'][0])}</p><h1>{t['hero'][1]}</h1><p class="hero-lead">{esc(t['hero'][2])}</p><div class="hero-actions"><a class="button button-primary" href="{prefix}{'zh/' if lang == 'zh' else ''}demo/">{esc(t['demo_cta'])}<span aria-hidden="true">↗</span></a><a class="button button-quiet" href="{prefix}{'zh/' if lang == 'zh' else ''}docs/">{esc(t['docs_cta'])}<span aria-hidden="true">→</span></a></div><p class="hero-note"><span class="mint-dot"></span>{esc(t['hero_note'])}</p></div><div class="hero-art" aria-label="{'Three connected preview stages' if lang == 'en' else '相连的三个预览阶段'}"><div class="art-grid"></div><div class="art-orbit"></div><div class="float-tag tag-intent">01 <span>INTENT</span></div><div class="float-tag tag-preview">02 <span>SEALED</span></div><div class="float-tag tag-markdown">03 <span>MARKDOWN</span></div><div class="hero-stack"><div class="stack-back"></div><div class="stack-mid"></div><div class="stack-front"><div class="mock-window"><i></i><i></i><i></i><span>preview_receipt.json</span></div><div class="mock-label">{'SEALED PREVIEW' if lang == 'en' else '封存预览'}</div><div class="mock-line wide"></div><div class="mock-line"></div><div class="mock-check"><b>✓</b> {'Scope is explicit' if lang == 'en' else '范围已明确'}</div><div class="mock-check"><b>✓</b> {'Review before write' if lang == 'en' else '先审阅，再写入'}</div><div class="mock-footer"><span class="mint-dot"></span> Conceptual <span>REV 01</span></div></div></div><div class="art-connector connector-one"></div><div class="art-connector connector-two"></div><div class="art-caption">DS LITE · LOCAL MCP · RECORDED</div></div></div><div class="hero-bottom"><span>PLAN <i>→</i> REVIEW <i>→</i> DELIVER</span><span>01 / 03</span></div></section>'''
-    part_2 = f'''<section class="story-section" id="story"><div class="section-heading"><p class="eyebrow">{esc(t['story'][0])}</p><h2>{t['story'][1]}</h2><p>{esc(t['story'][2])}</p></div><div class="story-layout"><div class="story-steps" role="group" aria-label="{esc(t['story'][0])}">{''.join(buttons)}</div><aside class="product-panel" data-story-panel data-active-step="1" data-interaction-mode="automatic" data-auto-eligible="true" aria-live="polite"><div class="panel-top"><span data-panel-kicker>{esc(t['story_label'])}</span><span class="panel-count" data-story-counter>01 / 03</span></div><h3 data-panel-title>{esc(t['panel_title'][0])}</h3><p class="panel-description" data-panel-description>{esc(t['panel_desc'][0])}</p><div class="panel-progress" role="progressbar" aria-label="{esc(t['case_progress'])}" aria-valuemin="0" aria-valuemax="3" aria-valuenow="1"><span data-story-progress></span></div><div data-panel-content>{stage_content}</div><div class="panel-foot"><span><i class="mint-dot"></i> {esc(t['case_progress'])}</span><span data-story-counter>01 / 03</span></div></aside></div></section>'''
-    part_3 = f'''<section class="capability-section"><div class="capability-intro"><p class="eyebrow">{esc(capabilities[0])}</p><h2>{esc(capabilities[1])}</h2><p>{esc(capabilities[2])}</p></div><div class="capability-columns"><section><h3>{esc(capabilities[3])}</h3><ul>{can_list}</ul></section>'''
-    part_4 = f'''<section><h3>{esc(capabilities[5])}</h3><ul>{cannot_list}</ul></section></div></section><section class="trust-section"><div class="trust-copy"><p class="eyebrow">{esc(t['trust'][0])}</p><h2>{t['trust'][1]}</h2><p>{esc(t['trust'][2])}</p><a class="text-link" href="{prefix}{'zh/' if lang == 'zh' else ''}architecture/">{esc(t['nav'][3])} <span aria-hidden="true">→</span></a></div><div class="trust-cards">{trustcards}</div></section>'''
-    part_5 = f'''<section class="closing-band"><div class="handoff-copy"><p class="eyebrow">{esc(handoff[0])}</p><h2>{esc(handoff[1])}</h2><p>{esc(handoff[2])}</p><a class="button button-primary" href="{demo_href}">{esc(t['closing_cta'])}<span aria-hidden="true">↗</span></a></div>{handoff_card}</section>'''
-    return "".join([part_1,part_2,part_3,part_4,part_5])
+    handoff_card = (
+        f'<div class="handoff-document"><div class="handoff-bar"><span class="file-chip">MD</span>'
+        f'<span>{esc(handoff[0])}</span><span class="handoff-dot"></span></div>'
+        f'<strong>{esc(work_item_title)}</strong><small>{excerpt_label}</small><pre>{excerpt}</pre></div>'
+    )
+    trustcards = "".join(
+        f'<article class="trust-card"><span>{esc(n)}</span><h3>{esc(h)}</h3><p>{esc(d)}</p></article>'
+        for n, h, d in t["trust_cards"]
+    )
+
+    receipt_title = "Preview receipt" if is_en else "预览回执"
+    receipt_note = "Local MCP · Recorded result" if is_en else "本地 MCP · 历史记录"
+    receipt_badge = "CONCEPTUAL" if is_en else "概念级"
+    receipt_kicker = "WORK ITEM · 01" if is_en else "工作项 · 01"
+    receipt_summary = (
+        "One recorded request, organized into one conceptual Work Item."
+        if is_en else
+        "一条真实记录中的需求，被整理为一个概念级工作项。"
+    )
+    receipt_labels = ["Scope", "Non-goals", "Criteria", "Verification"] if is_en else ["范围", "非目标", "验收条件", "验证说明"]
+    receipt_fields = "".join(
+        '<div class="receipt-field"><span>{label}</span><strong>{count:02d}</strong></div>'.format(
+            label=esc(label), count=len(issue[key])
+        )
+        for label, key in zip(receipt_labels, group_keys)
+    )
+    receipt_writes = "0 GitHub writes" if is_en else "0 次 GitHub 写入"
+    hero_art_label = "Recorded local Preview receipt" if is_en else "本地历史预览回执"
+    hero_art = (
+        f'<div class="hero-art" role="group" aria-label="{hero_art_label}">'
+        f'<div class="hero-art-top"><span class="panel-overline">{receipt_note}</span>'
+        f'<span class="hero-art-badge">{receipt_badge}</span></div>'
+        f'<article class="hero-receipt"><div class="receipt-heading">'
+        f'<span class="receipt-mark" aria-hidden="true">DS</span>'
+        f'<span class="receipt-heading-copy"><strong>{receipt_title}</strong><small>{receipt_note}</small></span>'
+        f'<span class="receipt-kind">01 / 01</span></div>'
+        f'<div class="receipt-divider"></div><span class="receipt-overline">{receipt_kicker}</span>'
+        f'<h3>{esc(work_item_title)}</h3><p>{receipt_summary}</p>'
+        f'<div class="receipt-fields">{receipt_fields}</div>'
+        f'<div class="receipt-bottom"><span class="mint-dot"></span><span>{receipt_writes}</span>'
+        f'<span>{receipt_badge} PREVIEW</span></div></article>'
+        f'<div class="hero-flow"><span>01 {"Intent" if is_en else "意图"}</span><i></i>'
+        f'<span>02 {"Preview" if is_en else "预览"}</span><i></i>'
+        f'<span>03 Markdown</span></div></div>'
+    )
+
+    part_1 = (
+        f'<section class="hero-section"><div class="hero-inner">'
+        f'<div class="hero-copy"><p class="eyebrow"><span class="eyebrow-mark"></span>{esc(t["hero"][0])}</p>'
+        f'<h1>{t["hero"][1]}</h1><p class="hero-lead">{esc(t["hero"][2])}</p>'
+        f'<div class="hero-actions"><a class="button button-primary" href="{prefix}{"zh/" if lang == "zh" else ""}demo/">'
+        f'{esc(t["demo_cta"])}<span aria-hidden="true">↗</span></a>'
+        f'<a class="button button-quiet" href="{prefix}{"zh/" if lang == "zh" else ""}docs/">'
+        f'{esc(t["docs_cta"])}<span aria-hidden="true">→</span></a></div>'
+        f'<p class="hero-note"><span class="mint-dot"></span>{esc(t["hero_note"])}</p></div>'
+        f'{hero_art}</div><div class="hero-bottom"><span>'
+        f'{"ONE RECORDED CASE" if is_en else "一个真实记录案例"}</span><span>01 / 03</span></div></section>'
+    )
+
+    part_2 = (
+        f'<section class="story-section" id="story"><div class="section-heading">'
+        f'<p class="eyebrow">{esc(t["story"][0])}</p><h2>{t["story"][1]}</h2>'
+        f'<p>{esc(t["story"][2])}</p></div><div class="story-layout">'
+        f'<div class="story-steps" role="group" aria-label="{esc(t["story"][0])}">'
+        f'{"".join(buttons)}</div><aside class="product-panel" data-story-panel data-active-step="1" '
+        f'data-interaction-mode="manual" data-auto-eligible="false" aria-live="polite">'
+        f'<div class="panel-top"><span data-panel-kicker>{esc(t["story_label"])}</span>'
+        f'<span class="panel-count" data-story-counter>01 / 03</span></div>'
+        f'<h3 data-panel-title>{esc(t["panel_title"][0])}</h3>'
+        f'<p class="panel-description" data-panel-description>{esc(t["panel_desc"][0])}</p>'
+        f'<div class="panel-progress" role="progressbar" aria-label="{esc(t["case_progress"])}" '
+        f'aria-valuemin="0" aria-valuemax="3" aria-valuenow="1"><span data-story-progress></span></div>'
+        f'<div data-panel-content>{stage_content}</div><div class="panel-foot">'
+        f'<span><i class="mint-dot"></i> {esc(t["case_progress"])}</span>'
+        f'<span data-story-counter>01 / 03</span></div></aside></div></section>'
+    )
+
+    part_3 = (
+        f'<section class="capability-section"><div class="capability-intro">'
+        f'<p class="eyebrow">{esc(capabilities[0])}</p><h2>{esc(capabilities[1])}</h2>'
+        f'<p>{esc(capabilities[2])}</p></div><div class="capability-columns">'
+        f'<section><h3>{esc(capabilities[3])}</h3><ul>{can_list}</ul></section>'
+        f'<section><h3>{esc(capabilities[5])}</h3><ul>{cannot_list}</ul></section>'
+        f'</div></section>'
+    )
+
+    part_4 = (
+        f'<section class="trust-section"><div class="trust-copy">'
+        f'<p class="eyebrow">{esc(t["trust"][0])}</p><h2>{t["trust"][1]}</h2>'
+        f'<p>{esc(t["trust"][2])}</p><a class="text-link" href="{prefix}{"zh/" if lang == "zh" else ""}architecture/">'
+        f'{esc(t["nav"][3])} <span aria-hidden="true">→</span></a></div>'
+        f'<div class="trust-cards">{trustcards}</div></section>'
+    )
+
+    part_5 = (
+        f'<section class="closing-band"><div class="handoff-copy"><p class="eyebrow">{esc(handoff[0])}</p>'
+        f'<h2>{esc(handoff[1])}</h2><p>{esc(handoff[2])}</p>'
+        f'<a class="button button-primary" href="{demo_href}">{esc(t["closing_cta"])}'
+        f'<span aria-hidden="true">↗</span></a></div>{handoff_card}</section>'
+    )
+    return "".join([part_1, part_2, part_3, part_4, part_5])
+
 def demo_page(lang, prefix, t):
     mdfile = "sample-issue.en.md" if lang == "en" else "sample-issue.md"
     mdurl = prefix + "assets/" + mdfile

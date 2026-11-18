@@ -1,18 +1,29 @@
-import { spawn } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { createServer } from 'node:net';
-import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const shots = path.join(root, '.review-screenshots', 'r5-fix-final');
-const durableEvidence = path.join(root, '.github', 'ux01-evidence');
+const durableEvidence = process.env.UX01_DURABLE_EVIDENCE_DIR || path.join(root, '.github', 'ux01-evidence');
+const r4Evidence = process.env.UX01_R4_EVIDENCE_DIR || path.join(shots, 'r4');
 const chromePath = process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 const routes = ['/','/demo/','/docs/','/architecture/','/zh/','/zh/demo/','/zh/docs/','/zh/architecture/'];
 const checks = [];
 const externalLinks = new Set();
 let server, browser;
+let profile, page;
+const reports = [];
+const storyViewports = [];
+const externalResults = [];
+let activeStoryViewport = null;
+const pointerInteractionResults = [];
+const mobileTouchResults = [];
+const inertialScrollResults = [];
+const mobileTargetAudits = [];
+const visualScreenshots = [];
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -44,6 +55,8 @@ async function makePage(port, targetId) {
   const runtimeErrors = [];
   const consoleErrors = [];
   const networkRequests = [];
+  const failedRequests = [];
+  const requestUrls = new Map();
   const beaconRequests = [];
   let call;
   socket.addEventListener('message', event => {
@@ -51,7 +64,13 @@ async function makePage(port, targetId) {
     if (data.method === 'Runtime.exceptionThrown') runtimeErrors.push(data.params.exceptionDetails.text || 'Runtime exception');
     if (data.method === 'Runtime.consoleAPICalled' && data.params.type === 'error') consoleErrors.push(data.params.args.map(arg => arg.value || arg.description || '').join(' '));
     if (data.method === 'Log.entryAdded' && data.params.entry.level === 'error') consoleErrors.push(data.params.entry.text);
-    if (data.method === 'Network.requestWillBeSent') networkRequests.push(data.params.request.url);
+    if (data.method === 'Network.requestWillBeSent') {
+      networkRequests.push(data.params.request.url);
+      requestUrls.set(data.params.requestId, data.params.request.url);
+    }
+    if (data.method === 'Network.loadingFailed') {
+      failedRequests.push({ url: requestUrls.get(data.params.requestId) || 'unknown request', errorText: data.params.errorText, canceled: data.params.canceled || false, blockedReason: data.params.blockedReason || null });
+    }
     if (data.method === 'Fetch.requestPaused') {
       beaconRequests.push(data.params.request.url);
       call('Fetch.fulfillRequest', { requestId: data.params.requestId, responseCode: 200, responseHeaders: [{ name: 'Content-Type', value: 'application/javascript' }, { name: 'Access-Control-Allow-Origin', value: '*' }, { name: 'Content-Length', value: '0' }], body: '' }).catch(() => {});
@@ -67,12 +86,45 @@ async function makePage(port, targetId) {
     pending.set(id, { resolve, reject });
     socket.send(JSON.stringify({ id, method, params }));
   });
-  const evaluate = async expression => {
+  const evaluate = async (expression, label) => {
+    const callSite = label || new Error().stack?.split('\n')[2]?.trim() || 'unknown call site';
+    try {
+      new Function(expression);
+    } catch (cause) {
+      const error = new Error(`Browser expression syntax error before CDP execution at ${callSite}: ${cause.message}`, { cause });
+      error.code = 'BROWSER_EXPRESSION_SYNTAX';
+      throw error;
+    }
     const result = await call('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true });
     if (result.exceptionDetails) throw new Error(result.exceptionDetails.exception?.description || result.exceptionDetails.text);
     return result.result.value;
   };
-  return { call, evaluate, socket, runtimeErrors, consoleErrors, networkRequests, beaconRequests };
+  return { call, evaluate, socket, runtimeErrors, consoleErrors, networkRequests, failedRequests, beaconRequests };
+}
+async function stopChild(child) {
+  if (!child || child.exitCode !== null || child.signalCode !== null) return;
+  await new Promise(resolve => {
+    let settled = false;
+    let timer;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve();
+    };
+    child.once('exit', finish);
+    child.once('error', finish);
+    timer = setTimeout(() => {
+      try { child.kill(); } catch {}
+      finish();
+    }, 3000);
+    try {
+      if (!child.kill()) finish();
+    } catch {
+      finish();
+    }
+    if (child.exitCode !== null || child.signalCode !== null) finish();
+  });
 }
 async function key(page, keyName, code, vk) {
   const event = { type: 'keyDown', key: keyName, code, windowsVirtualKeyCode: vk };
@@ -92,6 +144,40 @@ async function touchSwipe(page, x = 320, fromY = 760, toY = 190) {
   await page.call('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   await new Promise(resolve => setTimeout(resolve, 450));
 }
+async function touchFling(page, width, height) {
+  const x = Math.round(width / 2);
+  const fromY = Math.round(height * 0.76);
+  const moveYs = [0.60, 0.44, 0.28, 0.12].map(ratio => Math.round(height * ratio));
+  const samples = [];
+  await page.call('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ id: 1, x, y: fromY, force: 1 }] });
+  await new Promise(resolve => setTimeout(resolve, 20));
+  for (const y of moveYs) {
+    await page.call('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ id: 1, x, y, force: 1 }] });
+    samples.push(await page.evaluate('({y:scrollY,stage:document.querySelector("[data-story-panel]").dataset.activeStep,open:document.querySelector("[data-story-content=\\"1\\"] details").open})'));
+    await new Promise(resolve => setTimeout(resolve, 14));
+  }
+  await page.call('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  for (let i = 0; i < 18; i++) {
+    await new Promise(resolve => setTimeout(resolve, 35));
+    samples.push(await page.evaluate('({y:scrollY,stage:document.querySelector("[data-story-panel]").dataset.activeStep,open:document.querySelector("[data-story-content=\\"1\\"] details").open})'));
+  }
+  return samples;
+}
+async function pointerActivate(page, index) {
+  const point = await page.evaluate(`(()=>{const r=document.querySelectorAll('[data-story-step]')[${index}].getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2}})()`);
+  await page.call('Input.dispatchMouseEvent', { type: 'mouseMoved', x: point.x, y: point.y });
+  await page.call('Input.dispatchMouseEvent', { type: 'mousePressed', x: point.x, y: point.y, button: 'left', buttons: 1, clickCount: 1 });
+  await page.call('Input.dispatchMouseEvent', { type: 'mouseReleased', x: point.x, y: point.y, button: 'left', buttons: 0, clickCount: 1 });
+  await new Promise(resolve => setTimeout(resolve, 100));
+}
+async function touchTap(page, selector) {
+  const point = await page.evaluate(`(()=>{const el=document.querySelector(${JSON.stringify(selector)}),r=el.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2,hit=document.elementFromPoint(x,y);return {x,y,scrollY,rect:{left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height},hit:hit?.tagName+"."+(typeof hit?.className==="string"?hit.className:""),target:el.outerHTML.slice(0,120)}})()`);
+  await page.call('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: point.x, y: point.y, id: 1 }], modifiers: 0 });
+  await new Promise(resolve => setTimeout(resolve, 45));
+  await page.call('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [], modifiers: 0 });
+  await new Promise(resolve => setTimeout(resolve, 250));
+  return point;
+}
 async function captureEvidence(page, filename) {
   const shot = await page.call('Page.captureScreenshot', { format: 'jpeg', quality: 78, captureBeyondViewport: false, fromSurface: true });
   await writeFile(path.join(durableEvidence, filename), Buffer.from(shot.data, 'base64'));
@@ -100,7 +186,10 @@ async function navigate(page, url) {
   await page.call('Page.navigate', { url });
   const targetPath = new URL(url).pathname;
   for (let i = 0; i < 80; i++) {
-    const ready = await page.evaluate('document.readyState === "complete" && location.pathname === ' + JSON.stringify(targetPath)).catch(() => false);
+    const ready = await page.evaluate('document.readyState === "complete" && location.pathname === ' + JSON.stringify(targetPath)).catch(error => {
+      if (error.code === 'BROWSER_EXPRESSION_SYNTAX') throw error;
+      return false;
+    });
     if (ready) break;
     await new Promise(resolve => setTimeout(resolve, 100));
   }
@@ -130,6 +219,7 @@ async function capture(page, port, url, width, height, filename) {
 try {
   await mkdir(shots, { recursive: true });
   await mkdir(durableEvidence, { recursive: true });
+  await mkdir(r4Evidence, { recursive: true });
   const serverPort = await freePort();
   server = spawn('python', ['-m', 'http.server', String(serverPort), '--bind', '127.0.0.1'], { cwd: root, stdio: 'ignore' });
   await waitFor('http://127.0.0.1:' + serverPort + '/');
@@ -138,13 +228,13 @@ try {
   assert((await readFile(path.join(root, 'CNAME'), 'utf8')).trim() === 'ds.zevsol.com', 'Custom domain CNAME remains ds.zevsol.com');
 
   const debugPort = await freePort();
-  const profile = await mkdtemp(path.join(os.tmpdir(), 'delivery-site-chrome-'));
+  profile = await mkdtemp(path.join(os.tmpdir(), 'delivery-site-chrome-'));
   browser = spawn(chromePath, ['--headless=new', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage', '--no-proxy-server', '--host-resolver-rules=MAP ds.zevsol.com 127.0.0.1,MAP zevsol.github.io 127.0.0.1,MAP zevsol.com 127.0.0.1', '--remote-debugging-port=' + debugPort, '--user-data-dir=' + profile, 'about:blank'], { stdio: 'ignore' });
   await waitFor('http://127.0.0.1:' + debugPort + '/json/version');
   const targets = await (await fetch('http://127.0.0.1:' + debugPort + '/json/list')).json();
   const target = targets.find(item => item.type === 'page');
   if (!target) throw new Error('Chrome did not create a page target');
-  const page = await makePage(debugPort, target.id);
+  page = await makePage(debugPort, target.id);
   await page.call('Page.enable');
   await page.call('Runtime.enable');
   await page.call('Log.enable');
@@ -153,7 +243,6 @@ try {
   await page.call('Browser.grantPermissions', { origin: 'http://127.0.0.1:' + serverPort, permissions: ['clipboardReadWrite', 'clipboardSanitizedWrite'] }).catch(() => {});
 
   const sizes = [[1440,1000],[768,1024],[390,844]];
-  const reports = [];
   for (const route of routes) {
     for (const [width,height] of sizes) {
       let name = 'viewport-' + route.replaceAll('/','_') + width + '.png';
@@ -171,200 +260,185 @@ try {
     }
   }
 
-  await page.call('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false });
-  await navigate(page, 'http://127.0.0.1:' + serverPort + '/');
-  await page.evaluate('document.querySelectorAll("[data-story-step]")[2].click()');
-  await new Promise(resolve => setTimeout(resolve, 900));
-  assert(await page.evaluate('document.querySelector("[data-panel-title]").textContent') === 'A draft you control', 'Story click updates panel title');
-  assert(await page.evaluate('document.querySelector("[data-panel-content]").textContent.includes("EXCERPT")'), 'Story click updates panel content');
-  const progressWidth = await page.evaluate('document.querySelector("[data-story-progress]").style.width');
-  const stepDebug = await page.evaluate('JSON.stringify({title:document.querySelector("[data-panel-title]").textContent,y:scrollY,step:[...document.querySelectorAll("[data-story-section]")].map(x=>({top:x.getBoundingClientRect().top,height:x.getBoundingClientRect().height}))})');
-  assert(progressWidth === '100%', 'Story click updates progress (' + progressWidth + '; ' + stepDebug + ')');
-  await new Promise(resolve => setTimeout(resolve, 400));
-  assert(await page.evaluate('document.querySelector("[data-story-panel]").dataset.activeStep') === '3', 'Scroll observer preserves the clicked phase after smooth scrolling');
-  await page.evaluate('document.querySelectorAll("[data-story-step]")[1].click()');
-  assert(await page.evaluate('document.querySelector("[data-panel-content]").querySelectorAll("details").length === 4 && document.querySelector("[data-panel-content] h4").textContent === "Build a responsive personal portfolio website"'), 'Preview panel shows the recorded Work Item and four source sections');
-  await page.evaluate('document.querySelector("[data-panel-content] details summary").focus()');
-  await key(page, 'Enter', 'Enter', 13);
-  assert(await page.evaluate('document.querySelector("[data-panel-content] details").open && document.querySelector("[data-panel-content] details li").textContent === "Show a personal introduction."'), 'Work Item scope disclosures are keyboard accessible and source-backed');
-  await page.evaluate('document.querySelector("[data-story-step]").focus()');
-  await key(page, 'Enter', 'Enter', 13);
-  await new Promise(resolve => setTimeout(resolve, 900));
-  assert(await page.evaluate('document.querySelector("[data-panel-title]").textContent') === 'A clear request', 'Keyboard Enter activates a story phase');
-  await page.evaluate('document.querySelectorAll("[data-story-step]")[2].click()');
-  assert(await page.evaluate('document.querySelector("[data-panel-content]").textContent.includes("The page includes an introduction, project showcase, and contact information.")'), 'English story shows the translated source Markdown excerpt');
-  assert(await page.evaluate('document.querySelector("[data-panel-content]").textContent.includes("EXCERPT") && new URL(document.querySelector("[data-panel-content] a").href).pathname === "/demo/"'), 'English excerpt is labelled and links to the full Demo');
-  await navigate(page, 'http://127.0.0.1:' + serverPort + '/zh/');
-  await page.evaluate('document.querySelectorAll("[data-story-step]")[2].click()');
-  assert(await page.evaluate('document.querySelector("[data-panel-content]").textContent.includes("页面包含个人介绍、项目展示和联系方式。")'), 'Chinese story shows the original source Markdown excerpt');
-  assert(await page.evaluate('document.querySelector("[data-panel-content]").textContent.includes("节选") && new URL(document.querySelector("[data-panel-content] a").href).pathname === "/zh/demo/"'), 'Chinese excerpt is labelled and links to the full Demo');
-  await page.evaluate('document.querySelectorAll("[data-story-step]")[1].click()');
-  assert(await page.evaluate('document.querySelector("[data-panel-content]").textContent.includes("验收条件") && document.querySelector("[data-panel-content]").textContent.includes("页面包含个人介绍、项目展示和联系方式。")'), 'Chinese Preview uses the source Chinese acceptance criteria');
-
   for (const [lang, route] of [['en','/'],['zh','/zh/']]) {
     await page.call('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false });
-    await page.call('Emulation.setTouchEmulationEnabled', { enabled: false });
     await navigate(page, 'http://127.0.0.1:' + serverPort + route);
-    await page.evaluate('window.scrollTo(0, document.querySelector("#story").offsetTop)');
-    await new Promise(resolve => setTimeout(resolve, 350));
-    const desktopStart = Number(await page.evaluate('document.querySelector("[data-story-panel]").dataset.activeStep'));
-    await wheel(page, 520, 180, 850);
-    const desktopDown = Number(await page.evaluate('document.querySelector("[data-story-panel]").dataset.activeStep'));
-    await wheel(page, -520, 180, 180);
-    const desktopUp = Number(await page.evaluate('document.querySelector("[data-story-panel]").dataset.activeStep'));
-    assert(desktopDown > desktopStart && desktopUp < desktopDown, `D01 ${lang}: genuine downward and upward wheel input advances and reverses Story stages`);
-
-    await page.evaluate('document.querySelectorAll("[data-story-step]").forEach(button=>button.click())');
-    await new Promise(resolve => setTimeout(resolve, 1300));
-    assert(await page.evaluate('document.querySelector("[data-story-panel]").dataset.activeStep === "3" && document.querySelector("[data-story-panel]").dataset.interactionMode === "manual"'), `D02 ${lang}: every stage has a manual selection control`);
-    await page.evaluate('document.querySelectorAll("[data-story-section]")[0].scrollIntoView({block:"center"})');
-    await new Promise(resolve => setTimeout(resolve, 1250));
-    assert(await page.evaluate('document.querySelector("[data-story-panel]").dataset.activeStep === "3"'), `D03 ${lang}: manual choice survives its programmatic scroll and time beyond 1100 ms`);
-    await wheel(page, 520, 180, 850);
-    await page.evaluate('document.querySelectorAll("[data-story-section]")[1].scrollIntoView({block:"center"})');
-    await new Promise(resolve => setTimeout(resolve, 400));
-    const desktopRecovery = await page.evaluate('({stage:Number(document.querySelector("[data-story-panel]").dataset.activeStep),mode:document.querySelector("[data-story-panel]").dataset.interactionMode,eligible:document.querySelector("[data-story-panel]").dataset.autoEligible})');
-    assert(desktopRecovery.mode === 'automatic' && desktopRecovery.eligible === 'true' && desktopRecovery.stage !== 3, `D03 ${lang}: genuine wheel input restores automatic progression after manual priority (${JSON.stringify(desktopRecovery)})`);
-
-    await page.evaluate('document.querySelectorAll("[data-story-step]")[2].click()');
-    await new Promise(resolve => setTimeout(resolve, 850));
-    assert(await page.evaluate('(()=>{const title=document.querySelector("[data-panel-title]").getBoundingClientRect();const entry=document.querySelector(".story-stage-content:nth-of-type(3) pre").getBoundingClientRect();return title.top>=0&&title.bottom<=innerHeight&&entry.top<innerHeight&&entry.bottom>0})()'), `D04 ${lang}: Stage 03 title and readable Markdown entry are visible after activation`);
-    const desktopStoryShot = await page.call('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false, fromSurface: true });
-    await writeFile(path.join(shots, `ux01-story-stage3-${lang}-desktop-manual.png`), Buffer.from(desktopStoryShot.data, 'base64'));
-    await captureEvidence(page, `desktop-stage3-${lang}-manual.jpg`);
-
-    await navigate(page, 'http://127.0.0.1:' + serverPort + route);
-    await page.evaluate('window.scrollTo(0, document.querySelector("#story").offsetTop)');
-    await new Promise(resolve => setTimeout(resolve, 300));
-    for (let attempt = 0; attempt < 8 && Number(await page.evaluate('document.querySelector("[data-story-panel]").dataset.activeStep')) !== 3; attempt++) await wheel(page, 560, 180, 850);
-    const automaticStage3 = await page.evaluate('(()=>{const panel=document.querySelector("[data-story-panel]"),title=document.querySelector("[data-panel-title]").getBoundingClientRect(),entry=document.querySelector(".story-stage-content:nth-of-type(3) pre").getBoundingClientRect(),clip=panel.getBoundingClientRect();return {stage:Number(panel.dataset.activeStep),mode:panel.dataset.interactionMode,titleVisible:title.top>=0&&title.bottom<=innerHeight&&title.top>=clip.top&&title.bottom<=clip.bottom,entryVisible:entry.top>=0&&entry.bottom<=innerHeight&&entry.top>=clip.top&&entry.bottom<=clip.bottom,panel:{top:clip.top,bottom:clip.bottom},title:{top:title.top,bottom:title.bottom},entry:{top:entry.top,bottom:entry.bottom}}})()');
-    assert(automaticStage3.stage === 3 && automaticStage3.mode === 'automatic' && automaticStage3.titleVisible && automaticStage3.entryVisible, `D04 ${lang}: genuine scrolling lets IntersectionObserver automatically activate Stage 03 with title and readable entry visible in viewport and Panel (${JSON.stringify(automaticStage3)})`);
-    await captureEvidence(page, `desktop-stage3-${lang}-automatic.jpg`);
-
-    await navigate(page, 'http://127.0.0.1:' + serverPort + route);
-    await page.evaluate('document.querySelector(".product-panel").dispatchEvent(new MouseEvent("pointerenter",{bubbles:true}))');
-    const hoverOnlyProtection = await page.evaluate('document.querySelector("[data-story-panel]").dataset.interactionProtection');
-    await page.evaluate('(()=>{document.querySelectorAll("[data-story-step]")[1].click();const d=document.querySelector(".story-stage-content:nth-of-type(2) details");d.open=true;d.querySelector("summary").focus()})()');
-    await page.evaluate('document.querySelector(".product-panel").dispatchEvent(new MouseEvent("pointerenter",{bubbles:true}))');
-    const hoverProtection = await page.evaluate('document.querySelector("[data-story-panel]").dataset.interactionProtection');
-    await wheel(page, 430, 125, 850);
-    await page.evaluate('document.querySelectorAll("[data-story-section]")[2].scrollIntoView({block:"center"})');
-    await new Promise(resolve => setTimeout(resolve, 350));
-    assert(hoverOnlyProtection === 'none' && hoverProtection === 'panel-focus' && await page.evaluate('document.querySelector("[data-story-panel]").dataset.activeStep === "2" && document.activeElement.matches("details summary")'), `D05 ${lang}: hover does not lock; panel focus protects automatic stage through wheel/programmatic scrolling`);
-
-    await page.evaluate('(()=>{const b=document.querySelectorAll("[data-story-step]")[1],d=document.querySelector(".story-stage-content:nth-of-type(2) details");b.click();d.open=true;d.querySelector("summary").blur();document.querySelectorAll("[data-story-step]")[2].click()})()');
-    const hiddenDisclosure = await page.evaluate('(()=>{const p=document.querySelector("[data-story-panel]"),d=document.querySelector(".story-stage-content:nth-of-type(2) details");return {open:d.open,hidden:d.closest("[data-story-content]").hidden,protection:p.dataset.interactionProtection,stage:p.dataset.activeStep}})()');
-    assert(hiddenDisclosure.open && hiddenDisclosure.hidden && hiddenDisclosure.protection === 'none' && hiddenDisclosure.stage === '3', `D05 ${lang}: open Disclosure state persists in a hidden inactive stage without retaining automatic-progression protection (${JSON.stringify(hiddenDisclosure)})`);
-    await wheel(page, 520, 180, 850);
-    await page.evaluate('document.querySelectorAll("[data-story-section]")[1].scrollIntoView({block:"center"})');
-    await new Promise(resolve => setTimeout(resolve, 400));
-    const disclosureRecovery = await page.evaluate('({stage:Number(document.querySelector("[data-story-panel]").dataset.activeStep),mode:document.querySelector("[data-story-panel]").dataset.interactionMode,eligible:document.querySelector("[data-story-panel]").dataset.autoEligible})');
-    assert(disclosureRecovery.mode === 'automatic' && disclosureRecovery.eligible === 'true' && disclosureRecovery.stage !== 3, `D05 ${lang}: genuine wheel input resumes automatic progression while an inactive stage retains its open Disclosure (${JSON.stringify(disclosureRecovery)})`);
     await page.evaluate('document.querySelectorAll("[data-story-step]")[1].click()');
-    assert(await page.evaluate('document.querySelector(".story-stage-content:nth-of-type(2) details[open]") !== null'), `D05 ${lang}: returning to Stage 02 restores its open Disclosure after automatic progression`);
-
-    await page.evaluate('document.querySelector(".story-stage-content:nth-of-type(2) details summary").focus()');
-    await page.evaluate('document.querySelectorAll("[data-story-step]")[2].click()');
-    const focusRecoveredFromPanel = await page.evaluate('document.activeElement === document.querySelectorAll("[data-story-step]")[2] && document.activeElement !== document.body');
-    await page.evaluate('document.querySelectorAll("[data-story-step]")[1].focus();document.querySelectorAll("[data-story-step]")[1].click()');
-    assert(await page.evaluate('document.querySelector(".story-stage-content:nth-of-type(2) details").open && !document.querySelector(".story-stage-content:nth-of-type(3) details[open]")'), `D06 ${lang}: disclosure state persists independently when switching between stages`);
-    assert(focusRecoveredFromPanel && await page.evaluate('document.activeElement === document.querySelectorAll("[data-story-step]")[1] && document.activeElement !== document.body'), `D07 ${lang}: stage change recovers focus from Panel content to the unified navigation control`);
-    assert(await page.evaluate('[...document.querySelectorAll("[data-story-step]")].every(x=>x.tagName==="BUTTON"&&!x.querySelector("button,a,input,summary")&&x.querySelector(".story-title"))'), `D08 ${lang}: each stage exposes one unified non-nested semantic button`);
-    assert(await page.evaluate('document.querySelectorAll("[data-story-step][aria-current=step]").length === 1 && document.querySelector("[data-story-step][aria-current=step]").dataset.storySection === "1"'), `D09 ${lang}: exactly one stage is represented by aria-current=step`);
-
-    await page.call('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
-    await page.evaluate('document.querySelectorAll("[data-story-step]")[2].focus();document.querySelectorAll("[data-story-step]")[2].click()');
-    assert(await page.evaluate('matchMedia("(prefers-reduced-motion: reduce)").matches && getComputedStyle(document.documentElement).scrollBehavior === "auto"'), `D10 ${lang}: reduced-motion preference disables smooth page movement`);
-    await page.call('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }] });
-
-    await page.call('Emulation.setDeviceMetricsOverride', { width: 768, height: 1024, deviceScaleFactor: 1, mobile: false });
-    await navigate(page, 'http://127.0.0.1:' + serverPort + route);
-    const tabletState = await page.evaluate('(()=>{const panel=document.querySelector("[data-story-panel]"),nav=document.querySelector(".story-steps");return {device:panel.dataset.device,mode:panel.dataset.interactionMode,eligible:panel.dataset.autoEligible,navBeforePanel:!!(nav.compareDocumentPosition(panel)&Node.DOCUMENT_POSITION_FOLLOWING),navLeft:nav.getBoundingClientRect().left,panelLeft:panel.getBoundingClientRect().left,panelHeight:panel.getBoundingClientRect().height,panelClient:panel.clientHeight,panelScroll:panel.scrollHeight}})()');
-    await page.evaluate('window.scrollTo(0,document.querySelector("#story").offsetTop)');
-    await new Promise(resolve => setTimeout(resolve, 250));
-    const tabletStart = Number(await page.evaluate('document.querySelector("[data-story-panel]").dataset.activeStep'));
-    await wheel(page, 430, 120, 840);
-    const tabletAfterWheel = Number(await page.evaluate('document.querySelector("[data-story-panel]").dataset.activeStep'));
-    assert(tabletState.device === 'tablet' && ((tabletState.eligible === 'true' && tabletState.mode === 'automatic' && tabletAfterWheel > tabletStart) || (tabletState.eligible === 'false' && tabletState.mode === 'manual' && tabletAfterWheel === tabletStart)), `T01 ${lang}: Tablet combines scroll and manual interaction when readable, otherwise keeps a verified Manual-first fallback (${JSON.stringify({ ...tabletState, tabletStart, tabletAfterWheel })})`);
-    assert(tabletState.navBeforePanel && tabletState.navLeft < tabletState.panelLeft, `T03 ${lang}: Tablet DOM order follows its left-to-right visual navigation then Panel order`);
-    await page.evaluate('document.querySelectorAll("[data-story-step]")[2].click()');
-    await new Promise(resolve => setTimeout(resolve, 1300));
-    await page.evaluate('document.querySelectorAll("[data-story-section]")[0].scrollIntoView({block:"center"})');
-    await new Promise(resolve => setTimeout(resolve, 1250));
-    assert(await page.evaluate('document.querySelector("[data-story-panel]").dataset.activeStep === "3"'), `T04 ${lang}: Tablet manual selection wins over its programmatic scroll`);
-    if (tabletState.eligible === 'true') {
-      await wheel(page, 500, 120, 840);
-      await page.evaluate('document.querySelectorAll("[data-story-section]")[1].scrollIntoView({block:"center"})');
-      await new Promise(resolve => setTimeout(resolve, 400));
-      const tabletRecovery = await page.evaluate('({stage:Number(document.querySelector("[data-story-panel]").dataset.activeStep),mode:document.querySelector("[data-story-panel]").dataset.interactionMode,eligible:document.querySelector("[data-story-panel]").dataset.autoEligible})');
-      assert(tabletRecovery.mode === 'automatic' && tabletRecovery.eligible === 'true' && tabletRecovery.stage !== 3, `T04 ${lang}: genuine wheel input restores progression in eligible Tablet Hybrid mode (${JSON.stringify(tabletRecovery)})`);
-      await captureEvidence(page, `tablet-hybrid-${lang}.jpg`);
+    if (lang === 'en') {
+      assert(await page.evaluate('document.querySelectorAll("[data-panel-content] details").length === 4 && document.querySelector("[data-panel-content] h4").textContent === "Build a responsive personal portfolio website"'), 'B01 English: Preview panel shows the recorded Work Item and four source sections');
+      await page.evaluate('document.querySelector("[data-panel-content] details summary").focus()');
+      await key(page, 'Enter', 'Enter', 13);
+      assert(await page.evaluate('document.querySelector("[data-panel-content] details").open && document.querySelector("[data-panel-content] details li").textContent === "Show a personal introduction."'), 'B02 English: Work Item scope disclosure remains keyboard accessible and source-backed');
+      await page.evaluate('document.querySelectorAll("[data-story-step]")[2].click()');
+      assert(await page.evaluate('document.querySelector("[data-panel-content]").textContent.includes("The page includes an introduction, project showcase, and contact information.") && document.querySelector("[data-panel-content]").textContent.includes("EXCERPT") && new URL(document.querySelector("[data-panel-content] a").href).pathname === "/demo/"'), 'B03 English: Stage 03 shows the translated source Markdown excerpt and links to the full Demo');
     } else {
-      await wheel(page, 500, 120, 840);
-      const tabletFallbackRecovery = await page.evaluate('({stage:Number(document.querySelector("[data-story-panel]").dataset.activeStep),mode:document.querySelector("[data-story-panel]").dataset.interactionMode,eligible:document.querySelector("[data-story-panel]").dataset.autoEligible})');
-      assert(tabletFallbackRecovery.mode === 'manual' && tabletFallbackRecovery.eligible === 'false' && tabletFallbackRecovery.stage === 3, `T04 ${lang}: constrained Tablet Manual-first fallback keeps automatic progression disabled after wheel input (${JSON.stringify(tabletFallbackRecovery)})`);
+      assert(await page.evaluate('document.querySelectorAll("[data-panel-content] details").length === 4 && document.querySelector("[data-panel-content] h4").textContent === "开发响应式个人作品集网站"'), 'B01 Chinese: Preview panel shows the recorded Work Item and four source sections');
+      await page.evaluate('document.querySelectorAll("[data-story-step]")[2].click()');
+      assert(await page.evaluate('document.querySelector("[data-panel-content]").textContent.includes("页面包含个人介绍、项目展示和联系方式。") && document.querySelector("[data-panel-content]").textContent.includes("节选") && new URL(document.querySelector("[data-panel-content] a").href).pathname === "/zh/demo/"'), 'B02 Chinese: Stage 03 shows the original source Markdown excerpt and links to the full Demo');
+      await page.evaluate('document.querySelectorAll("[data-story-step]")[1].click()');
+      assert(await page.evaluate('document.querySelector("[data-panel-content]").textContent.includes("验收条件") && document.querySelector("[data-panel-content]").textContent.includes("页面包含个人介绍、项目展示和联系方式。")'), 'B03 Chinese: Preview uses the source Chinese acceptance criteria');
     }
-    await page.evaluate('(()=>{const b=document.querySelectorAll("[data-story-step]")[1];b.click();const d=document.querySelector(".story-stage-content:nth-of-type(2) details");d.open=true;d.querySelector("summary").focus()})()');
-    const tabletReadable = await page.evaluate('(()=>{const p=document.querySelector("[data-story-panel]"),li=p.querySelector("details[open] li"),r=li.getBoundingClientRect();return {visible:li.getClientRects().length>0,insidePanel:p.contains(li),focus:document.activeElement===p.querySelector("details[open] summary"),scrollable:p.scrollHeight>p.clientHeight,contentTop:r.top,contentBottom:r.bottom}})()');
-    assert(tabletReadable.visible && tabletReadable.insidePanel && tabletReadable.focus, `T05 ${lang}: Tablet disclosure text stays rendered and keyboard reachable`);
-    const tabletStoryShot = await page.call('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false, fromSurface: true });
-    await writeFile(path.join(shots, `ux01-story-tablet-${lang}.png`), Buffer.from(tabletStoryShot.data, 'base64'));
-    await page.evaluate('document.querySelectorAll("[data-story-step]")[2].focus();document.querySelectorAll("[data-story-step]")[2].click();document.querySelectorAll("[data-story-step]")[1].focus();document.querySelectorAll("[data-story-step]")[1].click()');
-    assert(await page.evaluate('document.querySelector(".story-stage-content:nth-of-type(2) details[open]") !== null && document.activeElement === document.querySelectorAll("[data-story-step]")[1]'), `T06 ${lang}: Tablet stage change preserves Disclosure and focus`);
-    await page.evaluate('(()=>{const p=document.querySelector("[data-story-panel]");p.style.maxHeight="200px";window.dispatchEvent(new Event("resize"))})()');
-    await new Promise(resolve => setTimeout(resolve, 120));
-    const tabletFallback = await page.evaluate('({eligible:document.querySelector("[data-story-panel]").dataset.autoEligible,mode:document.querySelector("[data-story-panel]").dataset.interactionMode})');
-    const fallbackStage = Number(await page.evaluate('document.querySelector("[data-story-panel]").dataset.activeStep'));
-    await wheel(page, 500, 120, 840);
-    const fallbackAfterWheel = await page.evaluate('({stage:Number(document.querySelector("[data-story-panel]").dataset.activeStep),mode:document.querySelector("[data-story-panel]").dataset.interactionMode,eligible:document.querySelector("[data-story-panel]").dataset.autoEligible})');
-    assert(fallbackAfterWheel.eligible === 'false' && fallbackAfterWheel.mode === 'manual' && fallbackAfterWheel.stage === fallbackStage, `T02 ${lang}: constrained Tablet Manual-first fallback stays manual after genuine wheel input (${JSON.stringify(fallbackAfterWheel)})`);
-    await captureEvidence(page, `tablet-manual-first-${lang}.jpg`);
-    await page.evaluate('document.querySelector("[data-story-panel]").style.removeProperty("max-height");window.dispatchEvent(new Event("resize"))');
-    await new Promise(resolve => setTimeout(resolve, 120));
-    assert(tabletFallback.eligible === 'false' && tabletFallback.mode === 'manual', `T02 ${lang}: constrained Panel readability switches Tablet to Manual-first`);
-    await page.evaluate('document.querySelectorAll("[data-story-step]")[0].focus()');
-    await key(page, 'Tab', 'Tab', 9);
-    const tabOrderWorks = await page.evaluate('document.activeElement === document.querySelectorAll("[data-story-step]")[1] && document.activeElement.matches(":focus-visible")');
-    await page.evaluate('document.querySelectorAll("[data-story-step]")[0].focus()');
-    await key(page, 'Enter', 'Enter', 13);
-    const enterWorks = await page.evaluate('document.querySelector("[data-story-panel]").dataset.activeStep === "1" && document.activeElement.matches(":focus-visible")');
-    await page.evaluate('document.querySelectorAll("[data-story-step]")[2].focus()');
-    await key(page, ' ', 'Space', 32);
-    const spaceWorks = await page.evaluate('document.querySelector("[data-story-panel]").dataset.activeStep === "3" && document.activeElement.matches(":focus-visible")');
-    assert(tabOrderWorks && enterWorks && spaceWorks && await page.evaluate('document.querySelectorAll("[data-story-step][aria-current=step]").length===1'), `T07 ${lang}: Tab order, Enter/Space, visible focus, and unique active-stage semantics work`);
 
-    await page.call('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
-    await page.call('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
-    await navigate(page, 'http://127.0.0.1:' + serverPort + route);
-    const mobileStart = Number(await page.evaluate('document.querySelector("[data-story-panel]").dataset.activeStep'));
-    const mobileMode = await page.evaluate('({mode:document.querySelector("[data-story-panel]").dataset.interactionMode,eligible:document.querySelector("[data-story-panel]").dataset.autoEligible})');
-    await page.evaluate('document.querySelector("#story").scrollIntoView({block:"start"})');
-    const scrollStart = Number(await page.evaluate('scrollY'));
-    await touchSwipe(page); await touchSwipe(page); await touchSwipe(page);
-    await new Promise(resolve => setTimeout(resolve, 850));
-    const mobileAfterTouch = await page.evaluate('({stage:Number(document.querySelector("[data-story-panel]").dataset.activeStep),scrollY})');
-    assert(mobileMode.mode === 'manual' && mobileMode.eligible === 'false' && mobileStart === 1, `M01 ${lang}: Mobile starts in Manual-first with automatic progression disabled`);
-    assert(mobileAfterTouch.scrollY > scrollStart && mobileAfterTouch.stage === mobileStart, `M02 ${lang}: actual repeated touch and inertial scrolling leaves Active Stage unchanged`);
-    await captureEvidence(page, `mobile-natural-scroll-${lang}.jpg`);
-    await page.evaluate('document.querySelectorAll("[data-story-step]")[2].focus()');
-    await key(page, ' ', 'Space', 32);
-    assert(await page.evaluate('document.querySelector("[data-story-panel]").dataset.activeStep === "3" && !document.querySelectorAll(".story-stage-content")[2].hidden && document.querySelector("[data-panel-title]").textContent === document.querySelectorAll("[data-story-step]")[2].dataset.title'), `M03 ${lang}: explicit keyboard stage navigation updates Active Stage and Panel content`);
-    await new Promise(resolve => setTimeout(resolve, 600));
-    assert(await page.evaluate('(()=>{const h=document.querySelector("[data-panel-title]").getBoundingClientRect(),entry=document.querySelector(".story-stage-content:nth-of-type(3) pre").getBoundingClientRect();return h.top>=0&&h.bottom<=innerHeight&&entry.top<innerHeight&&entry.bottom>0})()'), `M04 ${lang}: selecting a stage brings its Panel heading and readable entry into view`);
-    const mobileStoryShot = await page.call('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false, fromSurface: true });
-    await writeFile(path.join(shots, `ux01-story-stage3-${lang}-mobile.png`), Buffer.from(mobileStoryShot.data, 'base64'));
-    await captureEvidence(page, `mobile-manual-selection-${lang}.jpg`);
-    const mobileFlow = await page.evaluate('(()=>{const p=document.querySelector("[data-story-panel]"),s=getComputedStyle(p);return {position:s.position,maxHeight:s.maxHeight,overflowY:s.overflowY,scrollHeight:p.scrollHeight,clientHeight:p.clientHeight}})()');
-    assert(mobileFlow.position === 'relative' && mobileFlow.maxHeight === 'none' && mobileFlow.overflowY === 'visible' && mobileFlow.scrollHeight <= mobileFlow.clientHeight + 1, `M05 ${lang}: Mobile Panel follows natural document flow without fixed-height clipping`);
-    await page.evaluate('(()=>{document.querySelectorAll("[data-story-step]")[1].click();const d=document.querySelector(".story-stage-content:nth-of-type(2) details");d.open=true;const b=document.querySelectorAll("[data-story-step]")[2];b.focus();b.click();document.querySelectorAll("[data-story-step]")[1].focus();document.querySelectorAll("[data-story-step]")[1].click()})()');
-    assert(await page.evaluate('document.querySelector(".story-stage-content:nth-of-type(2) details[open]")!==null'), `M06 ${lang}: Mobile Disclosure remains open after leaving and returning to its stage`);
-    await page.evaluate('document.querySelectorAll("[data-story-step]")[2].focus()');
-    await key(page, 'Enter', 'Enter', 13);
-    assert(await page.evaluate('document.querySelector("[data-story-panel]").dataset.activeStep === "3" && document.activeElement.matches(":focus-visible") && document.querySelectorAll("[data-story-step][aria-current=step]").length===1'), `M07 ${lang}: Enter keyboard operation retains visible focus and one active-stage semantic`);
-    await page.evaluate('window.scrollTo(0,0);window.scrollTo(0,document.documentElement.scrollHeight)');
-    await new Promise(resolve => setTimeout(resolve, 500));
-    assert(await page.evaluate('document.querySelector("[data-story-panel]").dataset.activeStep === "3"'), `M08 ${lang}: programmatic scrolling cannot override manual stage selection`);
-    assert(await page.evaluate('[...document.querySelectorAll("[data-story-step]")].every(x=>{const r=x.getBoundingClientRect();return r.width>=44&&r.height>=44})'), `M09 ${lang}: all primary stage navigation touch targets are at least 44 × 44 CSS pixels`);
+    for (const [width, height, isMobile] of [[1440,1000,false],[1363,936,false],[768,1024,false],[390,844,true]]) {
+      activeStoryViewport = { language: lang, route, width, height, status: 'running' };
+      await page.call('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: isMobile });
+      if (isMobile) {
+        await page.call('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
+      } else {
+        await page.call('Emulation.setTouchEmulationEnabled', { enabled: false });
+      }
+      await navigate(page, 'http://127.0.0.1:' + serverPort + route);
+
+      const homeVisual = await page.evaluate('(()=>{const h=document.querySelector(".hero-copy h1"),em=h.querySelector("em"),walk=(root)=>{const lines=[],w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let n;while(n=w.nextNode()){let offset=0;for(const ch of [...n.data]){const range=document.createRange();range.setStart(n,offset);range.setEnd(n,offset+ch.length);const rect=range.getBoundingClientRect();if(rect.width){const top=Math.round(rect.top*10)/10;let line=lines.find(item=>item.top===top);if(!line){line={top,text:""};lines.push(line)}line.text+=ch}offset+=ch.length}}return lines.sort((a,b)=>a.top-b.top)},lineData=walk(em),group=document.querySelector(".hero-work-item"),groupLines=new Set(group?walk(group).map(line=>line.top):[]),sections=[".hero-section","#story",".capability-section",".trust-section",".closing-band",".site-footer"].map(selector=>document.querySelectorAll(selector).length),left=selector=>document.querySelector(selector).getBoundingClientRect().left,pad=selector=>parseFloat(getComputedStyle(document.querySelector(selector)).paddingLeft)||0,edges=[left(".hero-inner"),left(".hero-bottom"),left(".story-layout"),left(".capability-section")+pad(".capability-section"),left(".trust-section")+pad(".trust-section"),left(".closing-band")+pad(".closing-band"),left(".site-footer")+pad(".site-footer")];return {heading:h.innerText,headingWidth:h.clientWidth,headingScrollWidth:h.scrollWidth,lines:lineData.map(line=>line.text),lineLengths:lineData.map(line=>[...line.text.trim()].length),groupText:group?.textContent,groupLines:groupLines.size,sections,edges,edgeSpread:Math.max(...edges)-Math.min(...edges)}})()');
+      assert(homeVisual.sections.every(count=>count===1) && await page.evaluate('document.documentElement.scrollWidth<=innerWidth'), 'R5-Home ' + lang + ' ' + width + ': all six Home sections are present once and the page has no horizontal overflow');
+      if (lang === 'zh') {
+        assert(homeVisual.groupText === '工作项' && homeVisual.groupLines === 1 && !homeVisual.lines.some(line=>line.trim()==='项。') && Math.max(...homeVisual.lineLengths)-Math.min(...homeVisual.lineLengths)<=2, 'R5-Hero zh ' + width + ': balanced Chinese Hero lines keep 工作项 together and avoid an isolated 项。 (' + JSON.stringify(homeVisual) + ')');
+      } else {
+        assert(homeVisual.heading.includes('Turn intent into') && homeVisual.heading.includes('reviewable work.') && homeVisual.headingScrollWidth<=homeVisual.headingWidth+1, 'R5-Hero en ' + width + ': English Hero wording remains intact and fits its responsive heading box');
+      }
+      assert(homeVisual.edgeSpread<=1.5, 'R5-Alignment ' + lang + ' ' + width + ': primary Home section containers share consistent left alignment (' + homeVisual.edgeSpread.toFixed(2) + 'px spread)');
+
+      const initial = await page.evaluate('(()=>{const p=document.querySelector("[data-story-panel]"),buttons=[...document.querySelectorAll("[data-story-step]")],nav=document.querySelector(".story-steps"),panel=p.getBoundingClientRect(),navRect=nav.getBoundingClientRect(),style=getComputedStyle(p);return {stage:p.dataset.activeStep,mode:p.dataset.interactionMode,eligible:p.dataset.autoEligible,current:buttons.filter(x=>x.getAttribute("aria-current")==="step").length,buttons:buttons.map(x=>({controls:x.getAttribute("aria-controls"),target:!!document.getElementById(x.getAttribute("aria-controls")),width:x.getBoundingClientRect().width,height:x.getBoundingClientRect().height})),position:style.position,overflowY:style.overflowY,maxHeight:style.maxHeight,scrollHeight:p.scrollHeight,clientHeight:p.clientHeight,navLeft:navRect.left,navRight:navRect.right,navTop:navRect.top,panelLeft:panel.left,panelTop:panel.top,panelColumns:getComputedStyle(document.querySelector(".story-layout")).gridTemplateColumns,stageColumns:getComputedStyle(nav).gridTemplateColumns.split(" ").length}})()');
+      assert(initial.stage === '1' && initial.mode === 'manual' && initial.eligible === 'false', 'S01 ' + lang + ' ' + width + ': Story starts deterministically in Manual-first Stage 01');
+      assert(initial.current === 1 && initial.buttons.length === 3 && initial.buttons.every(x=>x.target), 'S02 ' + lang + ' ' + width + ': three semantic stage controls have valid aria-controls and exactly one active step');
+      assert(initial.position === 'static' && initial.overflowY === 'visible' && initial.maxHeight === 'none' && initial.scrollHeight <= initial.clientHeight + 1, 'S03 ' + lang + ' ' + width + ': Story detail panel follows natural document flow without sticky or nested scrolling');
+      if (isMobile) {
+        await page.evaluate('document.querySelectorAll("[data-story-step]")[1].click()');
+        const targets = await page.evaluate('(()=>{const selectors=[".menu-toggle",".language-switch",".preview-groups summary",".story-stop",".hero-actions .button",".site-nav a",".footer-links a",".brand",".text-link"];const nav=document.querySelector(".site-nav"),wasOpen=nav?.classList.contains("is-open");nav?.classList.add("is-open");const nodes=[...document.querySelectorAll(\'a[href],button,summary,input,select,[role="button"]\')];const visible=nodes.filter(x=>{const r=x.getBoundingClientRect(),s=getComputedStyle(x);return r.width>0&&r.height>0&&s.display!=="none"&&s.visibility!=="hidden"&&!x.closest("[hidden]")});const rows=visible.map(x=>{const r=x.getBoundingClientRect();return {selector:x.tagName.toLowerCase()+(x.className&&typeof x.className==="string"?"."+x.className.trim().replaceAll(/\\s+/g,"."):""),matches:selectors.filter(s=>x.matches(s)),text:(x.innerText||x.getAttribute("aria-label")||"").trim().replaceAll(/\\s+/g," ").slice(0,90),width:r.width,height:r.height,meets44:r.width>=44&&r.height>=44,box:{left:r.left,right:r.right,top:r.top,bottom:r.bottom}}});const overlaps=[];for(let i=0;i<rows.length;i++)for(let j=i+1;j<rows.length;j++){const a=visible[i],b=visible[j];if(a.contains(b)||b.contains(a))continue;const A=rows[i].box,B=rows[j].box,area=Math.max(0,Math.min(A.right,B.right)-Math.max(A.left,B.left))*Math.max(0,Math.min(A.bottom,B.bottom)-Math.max(A.top,B.top));if(area>2)overlaps.push({a:rows[i].selector,b:rows[j].selector,area})}if(!wasOpen)nav?.classList.remove("is-open");return {targets:rows.map(({box,...row})=>row),overlaps}})()');
+        mobileTargetAudits.push({ language: lang, width, ...targets });
+        await page.evaluate('document.querySelectorAll("[data-story-step]")[0].click()');
+      }
+
+      await page.evaluate('document.querySelector("#story").scrollIntoView({block:"start"})');
+      const beforeScroll = Number(await page.evaluate('scrollY'));
+      if (isMobile) {
+        await touchSwipe(page);
+      } else {
+        await wheel(page, 480, Math.min(width - 40, 180), Math.max(120, height - 150));
+        await wheel(page, -260, Math.min(width - 40, 180), 150);
+      }
+      await new Promise(resolve => setTimeout(resolve, 220));
+      const afterUserScroll = await page.evaluate('({stage:document.querySelector("[data-story-panel]").dataset.activeStep,scrollY})');
+      assert(afterUserScroll.scrollY !== beforeScroll && afterUserScroll.stage === '1', 'S04 ' + lang + ' ' + width + ': user scrolling changes page position but never changes the selected Story stage');
+
+      await page.evaluate('window.scrollTo(0,document.documentElement.scrollHeight)');
+      await new Promise(resolve => setTimeout(resolve, 100));
+      await page.evaluate('window.scrollTo(0,0)');
+      await new Promise(resolve => setTimeout(resolve, 100));
+      assert(await page.evaluate('document.querySelector("[data-story-panel]").dataset.activeStep === "1"'), 'S05 ' + lang + ' ' + width + ': programmatic scrolling in either direction cannot change the selected stage');
+
+      await page.evaluate('(()=>{const b=document.querySelectorAll("[data-story-step]")[1];b.focus();b.click()})()');
+      assert(await page.evaluate('document.querySelector("[data-story-panel]").dataset.activeStep === "2" && document.querySelector("[data-panel-title]").textContent === document.querySelectorAll("[data-story-step]")[1].dataset.title && document.querySelectorAll("[data-story-content]:not([hidden])").length === 1'), 'S06 ' + lang + ' ' + width + ': manual Stage 02 selection updates the matching panel only');
+
+      await page.evaluate('(()=>{const disclosure=document.querySelector("[data-story-content=\\"1\\"] details");disclosure.open=true;const next=document.querySelectorAll("[data-story-step]")[2];next.focus();next.click()})()');
+      const preserved = await page.evaluate('({open:document.querySelector("[data-story-content=\\"1\\"] details").open,hidden:document.querySelector("[data-story-content=\\"1\\"]").hidden,focus:document.activeElement===document.querySelectorAll("[data-story-step]")[2],stage:document.querySelector("[data-story-panel]").dataset.activeStep})');
+      assert(preserved.open && preserved.hidden && preserved.focus && preserved.stage === '3', 'S07 ' + lang + ' ' + width + ': switching stages preserves each mounted Disclosure and keeps focus on the selected control');
+      await page.evaluate('document.querySelectorAll("[data-story-step]")[1].focus();document.querySelectorAll("[data-story-step]")[1].click()');
+      assert(await page.evaluate('document.querySelector("[data-story-content=\\"1\\"] details[open]") !== null'), 'S08 ' + lang + ' ' + width + ': returning to Stage 02 restores its independently retained open Disclosure');
+
+      await page.evaluate('document.querySelectorAll("[data-story-step]")[0].focus()');
+      await key(page, 'Tab', 'Tab', 9);
+      const tabOrder = await page.evaluate('document.activeElement===document.querySelectorAll("[data-story-step]")[1]');
+      await key(page, 'Enter', 'Enter', 13);
+      const enterWorks = await page.evaluate('document.querySelector("[data-story-panel]").dataset.activeStep==="2" && document.activeElement===document.querySelectorAll("[data-story-step]")[1]');
+      await page.evaluate('document.querySelectorAll("[data-story-step]")[2].focus()');
+      await key(page, ' ', 'Space', 32);
+      const spaceWorks = await page.evaluate('document.querySelector("[data-story-panel]").dataset.activeStep==="3" && document.activeElement===document.querySelectorAll("[data-story-step]")[2]');
+      assert(tabOrder && enterWorks && spaceWorks && await page.evaluate('document.querySelectorAll("[data-story-step][aria-current=step]").length===1'), 'S09 ' + lang + ' ' + width + ': Tab, Enter, Space, focus retention, and unique active-stage semantics work');
+
+      await page.evaluate('document.querySelector("#story").scrollIntoView({block:"start"})');
+      const yBeforeSelection = Number(await page.evaluate('scrollY'));
+      await page.evaluate('document.querySelectorAll("[data-story-step]")[0].focus();document.querySelectorAll("[data-story-step]")[0].click()');
+      const selectionResult = await page.evaluate('({y:scrollY,stage:document.querySelector("[data-story-panel]").dataset.activeStep,focus:document.activeElement===document.querySelectorAll("[data-story-step]")[0]})');
+      assert(selectionResult.stage === '1' && selectionResult.focus && Math.abs(selectionResult.y-yBeforeSelection)<=1, 'S10 ' + lang + ' ' + width + ': manual selection does not trigger automatic page scrolling');
+
+      if (!isMobile) {
+        await page.evaluate('document.querySelector("#story").scrollIntoView({block:"start",behavior:"instant"})');
+        await new Promise(resolve => setTimeout(resolve, 100));
+        for (const index of [0, 1, 2]) {
+          const yBeforePointer = Number(await page.evaluate('scrollY'));
+          await pointerActivate(page, index);
+          const pointerResult = await page.evaluate(`(()=>({stage:document.querySelector("[data-story-panel]").dataset.activeStep,visible:document.querySelectorAll("[data-story-content]:not([hidden])").length,focus:document.activeElement===document.querySelectorAll("[data-story-step]")[${index}],scrollY,activeCount:document.querySelectorAll("[data-story-step][aria-current=step]").length}))()`);
+          await new Promise(resolve => setTimeout(resolve, 220));
+          const stable = await page.evaluate('document.querySelector("[data-story-panel]").dataset.activeStep');
+          const expectedStage = String(index + 1);
+          const passed = pointerResult.stage === expectedStage && pointerResult.visible === 1 && pointerResult.focus && pointerResult.activeCount === 1 && Math.abs(pointerResult.scrollY - yBeforePointer) <= 2 && stable === expectedStage;
+          pointerInteractionResults.push({ language: lang, width, stage: expectedStage, yBefore: yBeforePointer, result: pointerResult, stableStage: stable, passed });
+          assert(passed, 'R4-Pointer ' + lang + ' ' + width + ': CDP mouse activates Stage ' + expectedStage + ', its panel, predictable focus and scroll position');
+        }
+      } else {
+        await page.evaluate('document.querySelector("#story").scrollIntoView({block:"start",behavior:"instant"})');
+        await new Promise(resolve => setTimeout(resolve, 100));
+        for (const index of [0, 1, 2]) {
+          await touchTap(page, `[data-story-step]:nth-of-type(${index + 1})`);
+          const touchResult = await page.evaluate(`(()=>({stage:document.querySelector("[data-story-panel]").dataset.activeStep,visible:document.querySelectorAll("[data-story-content]:not([hidden])").length,activeCount:document.querySelectorAll("[data-story-step][aria-current=step]").length}))()`);
+          const passed = touchResult.stage === String(index + 1) && touchResult.visible === 1 && touchResult.activeCount === 1;
+          mobileTouchResults.push({ language: lang, action: 'stage-selection', stage: index + 1, passed, result: touchResult });
+          assert(passed, 'R4-Touch ' + lang + ': actual CDP touch activates Story Stage ' + (index + 1) + ' and matching panel');
+        }
+        await touchTap(page, '[data-story-step]:nth-of-type(2)');
+        await page.evaluate('document.querySelector("[data-story-content=\\"1\\"] details summary").scrollIntoView({block:"center",behavior:"instant"})');
+        await new Promise(resolve => setTimeout(resolve, 100));
+        await page.evaluate('document.querySelector("[data-story-content=\\"1\\"] details").open=false;window.__r4DisclosureClicks=0;document.querySelector("[data-story-content=\\"1\\"] details summary").addEventListener("click",()=>window.__r4DisclosureClicks++)');
+        const disclosureTapOne = await touchTap(page, '[data-story-content="1"] details summary');
+        const disclosureOpened = await page.evaluate('document.querySelector("[data-story-content=\\"1\\"] details").open');
+        const disclosureClicksAfterOne = await page.evaluate('window.__r4DisclosureClicks');
+        const disclosureTapTwo = await touchTap(page, '[data-story-content="1"] details summary');
+        const disclosureClosed = await page.evaluate('!document.querySelector("[data-story-content=\\"1\\"] details").open');
+        const disclosureClicksAfterTwo = await page.evaluate('window.__r4DisclosureClicks');
+        mobileTouchResults.push({ language: lang, action: 'disclosure-open-close', opened: disclosureOpened, closed: disclosureClosed, clicksAfterOne: disclosureClicksAfterOne, clicksAfterTwo: disclosureClicksAfterTwo, tapOne: disclosureTapOne, tapTwo: disclosureTapTwo, passed: disclosureOpened && disclosureClosed });
+        assert(disclosureOpened && disclosureClosed, 'R4-Touch ' + lang + ': CDP touch opens and closes the active Stage 02 Disclosure');
+        await touchTap(page, '[data-story-content="1"] details summary');
+        await page.evaluate('document.querySelector(".story-steps").scrollIntoView({block:"center",behavior:"instant"})');
+        await new Promise(resolve => setTimeout(resolve, 100));
+        await touchTap(page, '[data-story-step]:nth-of-type(3)');
+        await touchTap(page, '[data-story-step]:nth-of-type(2)');
+        const touchDisclosurePreserved = await page.evaluate('document.querySelector("[data-story-content=\\"1\\"] details").open');
+        assert(touchDisclosurePreserved, 'R4-Touch ' + lang + ': touch stage switching preserves open Disclosure state');
+        await page.evaluate('document.querySelector("#story").scrollIntoView({block:"start"})');
+        const beforeFling = await page.evaluate('({y:scrollY,stage:document.querySelector("[data-story-panel]").dataset.activeStep,open:document.querySelector("[data-story-content=\\"1\\"] details").open})');
+        const duringFling = await touchFling(page, width, height);
+        const afterFling = await page.evaluate('({y:scrollY,stage:document.querySelector("[data-story-panel]").dataset.activeStep,open:document.querySelector("[data-story-content=\\"1\\"] details").open})');
+        const deltaY = afterFling.y - beforeFling.y;
+        const flingPassed = Math.abs(deltaY) >= 40 && duringFling.every(x => x.stage === beforeFling.stage) && afterFling.stage === beforeFling.stage && afterFling.open;
+        inertialScrollResults.push({ language: lang, before: beforeFling, samples: duringFling, after: afterFling, deltaY, passed: flingPassed });
+        assert(flingPassed, 'R4-Inertia ' + lang + ': touch scroll/fling moves the page while Story stage and Disclosure remain unchanged during and after settling');
+      }
+
+      if (width > 1000) {
+        assert(initial.navLeft < initial.panelLeft && Math.abs(initial.navTop-initial.panelTop)<2 && initial.panelColumns.split(" ").length >= 2, 'S11 ' + lang + ': Desktop keeps selector and detail panel side by side on a shared top baseline');
+      } else if (width > 430) {
+        assert(initial.navTop < initial.panelTop && initial.stageColumns === 3, 'S12 ' + lang + ': Tablet places three equal stage controls above the full-width detail panel');
+      } else {
+        assert(initial.navTop < initial.panelTop && initial.stageColumns === 1 && initial.buttons.every(x=>x.width>=44&&x.height>=44), 'S13 ' + lang + ': Mobile stacks stage controls and preserves 44px minimum touch targets');
+      }
+
+      if (isMobile) {
+        const targetSummary = mobileTargetAudits.at(-1);
+        const requiredSelectors = ['.menu-toggle', '.language-switch', '.preview-groups summary', '.story-stop', '.hero-actions .button', '.site-nav a', '.footer-links a', '.brand', '.text-link'];
+        for (const selector of requiredSelectors) {
+          const hits = targetSummary.targets.filter(item => item.matches.includes(selector));
+          const matching = hits.filter(item => item.meets44);
+          assert(hits.length > 0 && matching.length === hits.length, 'R4-Target ' + lang + ': ' + selector + ' has a visible 44×44px or larger mobile hit area');
+        }
+        assert(targetSummary.overlaps.length === 0, 'R4-Target ' + lang + ': visible mobile Home controls do not overlap (' + JSON.stringify(targetSummary.overlaps) + ')');
+      }
+      await page.evaluate('document.querySelectorAll("[data-story-step]")[0].click();window.scrollTo(0,0)');
+      await new Promise(resolve => setTimeout(resolve, 120));
+      const viewportShot = await page.call('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false, fromSurface: true });
+      await writeFile(path.join(r4Evidence, `home-${lang}-${width}x${height}-viewport.png`), Buffer.from(viewportShot.data, 'base64'));
+      const storyShot = await page.call('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false, fromSurface: true });
+      await writeFile(path.join(shots, 'ux01-home-story-' + lang + '-' + width + '.png'), Buffer.from(storyShot.data, 'base64'));
+      await captureEvidence(page, 'home-story-' + lang + '-' + width + '.jpg');
+      if (width === 1440 || width === 1363 || width === 768 || width === 390) {
+        const fullPage = await page.call('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true, fromSurface: true });
+        const visualName = `home-${lang}-${width}x${height}.png`;
+        await writeFile(path.join(r4Evidence, visualName), Buffer.from(fullPage.data, 'base64'));
+        visualScreenshots.push({ language: lang, width, height, path: path.join(r4Evidence, visualName) });
+      }
+      storyViewports.push({ language: lang, width, height, status: 'passed' });
+      activeStoryViewport = null;
+    }
   }
 
   await navigate(page, 'http://127.0.0.1:' + serverPort + '/demo/');
@@ -592,7 +666,7 @@ try {
   assert(!(await page.evaluate('document.querySelector(".site-nav").classList.contains("is-open")')), 'Escape hides mobile navigation links');
   await page.evaluate('document.querySelectorAll("[data-story-step]")[2].click()');
   await new Promise(resolve => setTimeout(resolve, 600));
-  assert(await page.evaluate('document.querySelector("[data-story-panel]").dataset.activeStep === "3" && document.querySelector("[data-story-panel]").getBoundingClientRect().top < innerHeight'), 'Mobile phase selection scrolls the updated product panel into view');
+  assert(await page.evaluate('document.querySelector("[data-story-panel]").dataset.activeStep === "3" && getComputedStyle(document.querySelector("[data-story-panel]")).position === "static"'), 'Mobile Story stage selection updates without sticky or automatic panel movement');
   await navigate(page, 'http://127.0.0.1:' + serverPort + '/docs/');
   await page.evaluate('document.querySelector("[data-copy-target]").focus()');
   await key(page, 'Enter', 'Enter', 13);
@@ -637,10 +711,26 @@ try {
     }
   }
 
+  for (const lang of ['en', 'zh']) {
+    const names = [1440, 1363, 768, 390].map(width => `home-${lang}-${width}x${width === 1363 ? 936 : width === 768 ? 1024 : width === 390 ? 844 : 1000}-viewport.png`);
+    const cards = names.map((name, index) => `<figure><figcaption>${[1440,1363,768,390][index]} × ${[1000,936,1024,844][index]}</figcaption><img src="${name}" alt=""></figure>`).join('');
+    const html = `<!doctype html><meta charset="utf-8"><title>UX01 PR11 R4 ${lang} overview</title><style>*{box-sizing:border-box}body{margin:0;padding:24px;background:#e9e7e1;color:#243144;font:700 20px system-ui}h1{margin:0 0 20px;font-size:24px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}figure{margin:0;padding:10px;background:#fff;border-radius:8px}figcaption{padding:6px 0 10px;font-size:15px}img{display:block;width:100%;height:auto;border:1px solid #ddd}</style><h1>Delivery System Home · ${lang === 'en' ? 'English' : '中文'} · viewport overview</h1><main class="grid">${cards}</main>`;
+    const sheetHtml = path.join(r4Evidence, `contact-${lang}.html`);
+    await writeFile(sheetHtml, html);
+    await page.call('Emulation.setDeviceMetricsOverride', { width: 1600, height: 1200, deviceScaleFactor: 1, mobile: false });
+    await page.call('Page.navigate', { url: pathToFileURL(sheetHtml).href });
+    await new Promise(resolve => setTimeout(resolve, 350));
+    await page.evaluate('Promise.all([...document.images].map(img=>img.decode()))');
+    const sheet = await page.call('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true, fromSurface: true });
+    const sheetPath = path.join(r4Evidence, `contact-${lang}.png`);
+    await writeFile(sheetPath, Buffer.from(sheet.data, 'base64'));
+    visualScreenshots.push({ language: lang, type: 'contact-sheet', path: sheetPath });
+    await rm(sheetHtml, { force: true });
+  }
+
   assert(page.runtimeErrors.length === 0, 'No JavaScript runtime exceptions (' + page.runtimeErrors.join('; ') + ')');
   assert(page.consoleErrors.length === 0, 'No browser Console errors (' + page.consoleErrors.join('; ') + ')');
 
-  const externalResults = [];
   for (const href of externalLinks) {
     try {
       const response = await fetch(href, { method: 'HEAD', redirect: 'follow', signal: AbortSignal.timeout(6000) });
@@ -653,12 +743,40 @@ try {
     }
   }
 
-  const browserReport = { viewportChecks: reports.length, totalChecks: checks.length, viewports: reports, checks, externalLinks: externalResults, runtimeErrors: page.runtimeErrors, consoleErrors: page.consoleErrors };
+  assert(page.failedRequests.length === 0, 'No failed browser network requests (' + JSON.stringify(page.failedRequests) + ')');
+
+  const browserReport = { testedHead: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim(), r4BaselineAssertions: 437, r5AdditionalAssertions: checks.filter(check => check.startsWith('R5-')).length, viewportChecks: reports.length, storyViewports, totalChecks: checks.length, viewports: reports, checks, pointerInteractionResults, mobileTouchResults, inertialScrollResults, mobileTargetAudits, visualScreenshots, externalLinks: externalResults, failedRequests: page.failedRequests, runtimeErrors: page.runtimeErrors, consoleErrors: page.consoleErrors };
   await writeFile(path.join(shots, 'browser-report.json'), JSON.stringify(browserReport, null, 2));
   await writeFile(path.join(durableEvidence, 'browser-report.json'), JSON.stringify(browserReport, null, 2));
-  console.log(JSON.stringify({ screenshots: shots, viewportChecks: reports.length, totalChecks: checks.length, runtimeErrors: page.runtimeErrors, consoleErrors: page.consoleErrors, externalLinks: externalResults }, null, 2));
-  page.socket.close();
+  console.log(JSON.stringify({ screenshots: shots, r4Evidence, viewportChecks: reports.length, storyViewports, totalChecks: checks.length, pointerInteractionResults, mobileTouchResults, inertialScrollResults, mobileTargetAudits, visualScreenshots, failedRequests: page.failedRequests, runtimeErrors: page.runtimeErrors, consoleErrors: page.consoleErrors, externalLinks: externalResults }, null, 2));
+} catch (error) {
+  const failureReport = {
+    testedHead: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim(),
+    r4BaselineAssertions: 437,
+    r5AdditionalAssertions: checks.filter(check => check.startsWith('R5-')).length,
+    viewportChecks: reports.length,
+    storyViewports,
+    activeStoryViewport,
+    totalChecks: checks.length,
+    checks,
+    externalLinks: externalResults,
+    failedRequests: page?.failedRequests || [],
+    runtimeErrors: page?.runtimeErrors || [],
+    consoleErrors: page?.consoleErrors || [],
+    pointerInteractionResults,
+    mobileTouchResults,
+    inertialScrollResults,
+    mobileTargetAudits,
+    visualScreenshots,
+    failure: { name: error.name, message: error.message, stack: error.stack }
+  };
+  await mkdir(shots, { recursive: true });
+  await writeFile(path.join(shots, 'browser-report.json'), JSON.stringify(failureReport, null, 2));
+  await writeFile(path.join(durableEvidence, 'browser-report.json'), JSON.stringify(failureReport, null, 2));
+  throw error;
 } finally {
-  if (server) server.kill();
-  if (browser) browser.kill();
+  if (page?.socket.readyState === WebSocket.OPEN) page.socket.close();
+  await stopChild(server);
+  await stopChild(browser);
+  if (profile) await rm(profile, { recursive: true, force: true });
 }
