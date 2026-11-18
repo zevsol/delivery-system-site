@@ -42,7 +42,7 @@ COPY = {
 "nav": ["产品", "记录演示", "文档", "架构"], "switch": "English", "switch_label": "Switch language to English",
 "pages": ["首页", "记录演示", "文档", "架构与状态"],
 "descriptions": ["Delivery System Lite 将开发想法整理成结构化、可审查的 GitHub Issue 草稿。", "查看一次真实的本地 MCP 测试结果、预览回执和 Markdown 草稿。静态展示，不调用实时 AI 或写入 GitHub。", "根据当前 Delivery System 源码配置本地 stdio MCP 预览流程的简明指南。", "了解预览优先的工作流，以及 Delivery System Lite 和 GitHub Apply 当前的验证边界。"],
-"navaria": "主导航", "skip": "跳转到正文", "hero": ["从开发需求到清晰交付", "把开发需求<br><em>整理成可审阅的工作项。</em>", "Delivery System Lite 将开发需求整理成结构化工作项。通过一条真实记录，查看对应预览和 Markdown 草稿。"],
+"navaria": "主导航", "skip": "跳转到正文", "hero": ["从开发需求到清晰交付", "把开发需求<br><em>整理成可审阅的<span class=\"hero-work-item\">工作项</span>。</em>", "Delivery System Lite 将开发需求整理成结构化工作项。通过一条真实记录，查看对应预览和 Markdown 草稿。"],
 "hero_note": "本地 MCP 历史结果 · 不调用实时 AI · 不写入 GitHub", "demo_cta": "查看真实记录案例", "docs_cta": "了解工作方式",
 "story": ["一个真实的 DS LITE 案例", "需求在每一步变得更清晰。", "同一个作品集需求，依次经过三个阶段：人的意图、封存的概念预览，以及展示为 Issue Markdown 的草稿。"],
 "step_names": ["需求意图", "封存预览", "GitHub Issue Markdown"],

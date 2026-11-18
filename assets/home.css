@@ -34,6 +34,8 @@
 .page-home .hero-copy {max-width:680px}
 .page-home .hero-copy h1 {max-width:690px;margin-bottom:20px;font-size:clamp(50px,5.2vw,70px);line-height:1.045;letter-spacing:-.052em;font-weight:720}
 .page-home .hero-copy h1 em {color:#3158c9;background:none;-webkit-text-fill-color:currentColor}
+.page-home.lang-zh .hero-copy h1 em {display:block;text-wrap:balance}
+.page-home.lang-zh .hero-work-item {white-space:nowrap}
 .page-home .hero-lead {max-width:530px;margin-bottom:24px;color:#5e6875;font-size:16px;line-height:1.78}
 .page-home .hero-note {margin-top:19px;color:#6e7782;font-size:11px;line-height:1.6}
 .page-home .mint-dot {width:7px;height:7px;background:#4d9b7f;box-shadow:0 0 0 4px rgba(77,155,127,.12)}

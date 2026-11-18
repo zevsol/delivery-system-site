@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { createServer } from 'node:net';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
@@ -7,7 +7,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const shots = path.join(root, '.review-screenshots', 'r5-fix-final');
-const durableEvidence = path.join(root, '.github', 'ux01-evidence');
+const durableEvidence = process.env.UX01_DURABLE_EVIDENCE_DIR || path.join(root, '.github', 'ux01-evidence');
 const r4Evidence = process.env.UX01_R4_EVIDENCE_DIR || path.join(shots, 'r4');
 const chromePath = process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 const routes = ['/','/demo/','/docs/','/architecture/','/zh/','/zh/demo/','/zh/docs/','/zh/architecture/'];
@@ -288,6 +288,15 @@ try {
         await page.call('Emulation.setTouchEmulationEnabled', { enabled: false });
       }
       await navigate(page, 'http://127.0.0.1:' + serverPort + route);
+
+      const homeVisual = await page.evaluate('(()=>{const h=document.querySelector(".hero-copy h1"),em=h.querySelector("em"),walk=(root)=>{const lines=[],w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let n;while(n=w.nextNode()){let offset=0;for(const ch of [...n.data]){const range=document.createRange();range.setStart(n,offset);range.setEnd(n,offset+ch.length);const rect=range.getBoundingClientRect();if(rect.width){const top=Math.round(rect.top*10)/10;let line=lines.find(item=>item.top===top);if(!line){line={top,text:""};lines.push(line)}line.text+=ch}offset+=ch.length}}return lines.sort((a,b)=>a.top-b.top)},lineData=walk(em),group=document.querySelector(".hero-work-item"),groupLines=new Set(group?walk(group).map(line=>line.top):[]),sections=[".hero-section","#story",".capability-section",".trust-section",".closing-band",".site-footer"].map(selector=>document.querySelectorAll(selector).length),left=selector=>document.querySelector(selector).getBoundingClientRect().left,pad=selector=>parseFloat(getComputedStyle(document.querySelector(selector)).paddingLeft)||0,edges=[left(".hero-inner"),left(".hero-bottom"),left(".story-layout"),left(".capability-section")+pad(".capability-section"),left(".trust-section")+pad(".trust-section"),left(".closing-band")+pad(".closing-band"),left(".site-footer")+pad(".site-footer")];return {heading:h.innerText,headingWidth:h.clientWidth,headingScrollWidth:h.scrollWidth,lines:lineData.map(line=>line.text),lineLengths:lineData.map(line=>[...line.text.trim()].length),groupText:group?.textContent,groupLines:groupLines.size,sections,edges,edgeSpread:Math.max(...edges)-Math.min(...edges)}})()');
+      assert(homeVisual.sections.every(count=>count===1) && await page.evaluate('document.documentElement.scrollWidth<=innerWidth'), 'R5-Home ' + lang + ' ' + width + ': all six Home sections are present once and the page has no horizontal overflow');
+      if (lang === 'zh') {
+        assert(homeVisual.groupText === '工作项' && homeVisual.groupLines === 1 && !homeVisual.lines.some(line=>line.trim()==='项。') && Math.max(...homeVisual.lineLengths)-Math.min(...homeVisual.lineLengths)<=2, 'R5-Hero zh ' + width + ': balanced Chinese Hero lines keep 工作项 together and avoid an isolated 项。 (' + JSON.stringify(homeVisual) + ')');
+      } else {
+        assert(homeVisual.heading.includes('Turn intent into') && homeVisual.heading.includes('reviewable work.') && homeVisual.headingScrollWidth<=homeVisual.headingWidth+1, 'R5-Hero en ' + width + ': English Hero wording remains intact and fits its responsive heading box');
+      }
+      assert(homeVisual.edgeSpread<=1.5, 'R5-Alignment ' + lang + ' ' + width + ': primary Home section containers share consistent left alignment (' + homeVisual.edgeSpread.toFixed(2) + 'px spread)');
 
       const initial = await page.evaluate('(()=>{const p=document.querySelector("[data-story-panel]"),buttons=[...document.querySelectorAll("[data-story-step]")],nav=document.querySelector(".story-steps"),panel=p.getBoundingClientRect(),navRect=nav.getBoundingClientRect(),style=getComputedStyle(p);return {stage:p.dataset.activeStep,mode:p.dataset.interactionMode,eligible:p.dataset.autoEligible,current:buttons.filter(x=>x.getAttribute("aria-current")==="step").length,buttons:buttons.map(x=>({controls:x.getAttribute("aria-controls"),target:!!document.getElementById(x.getAttribute("aria-controls")),width:x.getBoundingClientRect().width,height:x.getBoundingClientRect().height})),position:style.position,overflowY:style.overflowY,maxHeight:style.maxHeight,scrollHeight:p.scrollHeight,clientHeight:p.clientHeight,navLeft:navRect.left,navRight:navRect.right,navTop:navRect.top,panelLeft:panel.left,panelTop:panel.top,panelColumns:getComputedStyle(document.querySelector(".story-layout")).gridTemplateColumns,stageColumns:getComputedStyle(nav).gridTemplateColumns.split(" ").length}})()');
       assert(initial.stage === '1' && initial.mode === 'manual' && initial.eligible === 'false', 'S01 ' + lang + ' ' + width + ': Story starts deterministically in Manual-first Stage 01');
@@ -736,12 +745,15 @@ try {
 
   assert(page.failedRequests.length === 0, 'No failed browser network requests (' + JSON.stringify(page.failedRequests) + ')');
 
-  const browserReport = { viewportChecks: reports.length, storyViewports, totalChecks: checks.length, viewports: reports, checks, pointerInteractionResults, mobileTouchResults, inertialScrollResults, mobileTargetAudits, visualScreenshots, externalLinks: externalResults, failedRequests: page.failedRequests, runtimeErrors: page.runtimeErrors, consoleErrors: page.consoleErrors };
+  const browserReport = { testedHead: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim(), r4BaselineAssertions: 437, r5AdditionalAssertions: checks.filter(check => check.startsWith('R5-')).length, viewportChecks: reports.length, storyViewports, totalChecks: checks.length, viewports: reports, checks, pointerInteractionResults, mobileTouchResults, inertialScrollResults, mobileTargetAudits, visualScreenshots, externalLinks: externalResults, failedRequests: page.failedRequests, runtimeErrors: page.runtimeErrors, consoleErrors: page.consoleErrors };
   await writeFile(path.join(shots, 'browser-report.json'), JSON.stringify(browserReport, null, 2));
   await writeFile(path.join(durableEvidence, 'browser-report.json'), JSON.stringify(browserReport, null, 2));
   console.log(JSON.stringify({ screenshots: shots, r4Evidence, viewportChecks: reports.length, storyViewports, totalChecks: checks.length, pointerInteractionResults, mobileTouchResults, inertialScrollResults, mobileTargetAudits, visualScreenshots, failedRequests: page.failedRequests, runtimeErrors: page.runtimeErrors, consoleErrors: page.consoleErrors, externalLinks: externalResults }, null, 2));
 } catch (error) {
   const failureReport = {
+    testedHead: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim(),
+    r4BaselineAssertions: 437,
+    r5AdditionalAssertions: checks.filter(check => check.startsWith('R5-')).length,
     viewportChecks: reports.length,
     storyViewports,
     activeStoryViewport,
